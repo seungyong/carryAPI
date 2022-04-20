@@ -1,0 +1,10 @@
+__pycache__
+.DS_Store
+venv
+.idea
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+config.py
+.env
