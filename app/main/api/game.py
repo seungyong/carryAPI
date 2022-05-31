@@ -5,13 +5,14 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, request as flask_request
 from flask_restx import Namespace, Resource, fields
+from sqlalchemy import desc
 
 from app import session
 from ..models.game import Game as Game_model, response_model
 from ..models.game_player import GamePlayer as Game_player_model
 from ..models.game_team_info import GameTeamInfo as Game_team_info_model
 
-from ..util import response, riot_url, version as version_util
+from ..util import response, riot_url
 
 game_bp = Blueprint('game_bp', __name__)
 game_ns = Namespace(
@@ -48,19 +49,47 @@ class AllGame(Resource):
         page = flask_request.args.get('page', default=1, type=int)
         count = flask_request.args.get('count', default=20, type=int)
         queue = flask_request.args.get('queue', default=None, type=int)
+        history = list()
+        players = list()
 
-        page *= count
+        count *= count
+
+        if page == 1:
+            start = 0
+        else:
+            start = (page - 1) * count
 
         if queue is None:
-            games = [x.serialize for x in
-                     session.query(Game_model).filter(Game_model.puuid == puuid).order_by(
-                         Game_model.created_time).limit(count).all()]
+            game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
+                .filter(Game_model.puuid == puuid).join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
+                .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
+                .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
         else:
-            games = [x.serialize for x in
-                     session.query(Game_model).filter(Game_model.puuid == puuid, Game_model.queue == queue).order_by(
-                         Game_model.created_time).limit(count).all()]
+            game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
+                .filter(Game_model.puuid == puuid, Game_model.queue_id == queue)
+                .join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
+                .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
+                .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
 
-        res = response.response_data(games)
+        # 데이터 가공
+        for i, game in enumerate(game_info):
+            info = dict()
+            i += 1
+            players.append(game[1].serialize)
+
+            # 10개당(플레이어) 1개의 게임
+            if i % 10 == 0:
+                for key, value in game[0].serialize.items():
+                    info[key] = value
+
+                for key, value in game[2].serialize.items():
+                    info[key] = value
+
+                info['players'] = players
+                players = list()
+                history.append(info)
+
+        res = response.response_data(history)
 
         return res, res['statusCode']
 
@@ -144,7 +173,12 @@ class AllGame(Resource):
                         if 'challenges' in game_info:
                             kda = game_info['challenges']['kda']
                         else:
-                            kda = (game_info['kills'] + game_info['assists']) / game_info['deaths']
+                            # -1은 Perfect 게임
+                            # URF 같은 특수모드는 kda를 주지 않음 (0으로 나눌 시 ZeroDivision Error 발생)
+                            if game_info['deaths'] == 0:
+                                kda = -1
+                            else:
+                                kda = (game_info['kills'] + game_info['assists']) / game_info['deaths']
 
                         game_players.append(Game_player_model(
                             game_id=game_id,
