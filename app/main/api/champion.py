@@ -5,9 +5,9 @@ from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 from app import session
 from ..models.champion import Champion as Champion_model, response_model
-from ..models.champion_skill import ChampionSkill as ChampionSkill_model
+from ..models.champion_skill import response_model as champion_skill_response_model
 
-from .champion_skill import insert_champions_skill
+from .champion_skill import insert_champions_skill, get_champion_skill
 from ..util import response, riot_url, version as version_util
 
 champion_bp = Blueprint('champion_bp', __name__)
@@ -18,7 +18,7 @@ champion_ns = Namespace(
 )
 
 response_model = champion_ns.model('Champion Response Model', {
-    'results': fields.List(fields.String(response_model())),
+    'results': fields.List(fields.String(response_model() | champion_skill_response_model())),
     'statusCode': fields.Integer(200)
 })
 
@@ -30,14 +30,14 @@ response_no_data_model = champion_ns.model('Champion No Data', {
 @champion_ns.route('/')
 @champion_ns.response(500, 'Internal Server Error')
 class AllChampion(Resource):
-    @champion_ns.response(200, 'Success', response_model)
-    @champion_ns.response(404, 'No Data', response_no_data_model)
-    def get(self):
-        """Get All Champion Data"""
-        champions = [x.serialize for x in session.query(Champion_model).all()]
-        res = response.response_data(champions)
-
-        return res, res['statusCode']
+    # @champion_ns.response(200, 'Success', response_model)
+    # @champion_ns.response(404, 'No Data', response_no_data_model)
+    # def get(self):
+    #     """Get All Champion Data"""
+    #     champions = [x.serialize for x in session.query(Champion_model).all()]
+    #     res = response.response_data(champions)
+    # 
+    #     return res, res['statusCode']
 
     @champion_ns.response(204, 'Champions data add or update completed!')
     def post(self):
@@ -163,7 +163,18 @@ class AllChampion(Resource):
 class ChampionWithId(Resource):
     def get(self, champion_id):
         """Get One Champion Data"""
-        champions = [x.serialize for x in session.query(Champion_model).filter_by(champion_id=champion_id)]
-        res = response.response_data(champions)
+        champion = [x.serialize for x in session.query(Champion_model).filter_by(champion_id=champion_id)]
+        response_champion = response.response_data(champion)
+        response_champion_skill = get_champion_skill(champion_id)
 
-        return res, res['statusCode']
+        if response_champion['statusCode'] == 404:
+            response_data = {}
+            status_code = 404
+        elif response_champion_skill['statusCode'] == 200:
+            response_data = response_champion['results'][0] | response_champion_skill['results'][0]
+            status_code = 200
+        else:
+            response_data = {}
+            status_code = 500
+
+        return response_data, status_code

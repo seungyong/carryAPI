@@ -1,28 +1,9 @@
 from urllib import request
 from json import loads
 
-from flask import Blueprint
-from flask_restx import Namespace, Resource, fields
 from app import session
-from ..models.champion_skill import ChampionSkill as ChampionSkill_model, response_model
-from ..models.champion import Champion as Champion_model
+from ..models.champion_skill import ChampionSkill as ChampionSkill_model
 from ..util import response, riot_url, version as version_util
-
-champion_skills_bp = Blueprint('champion_skills_bp', __name__)
-champion_skills_ns = Namespace(
-    'Champion SKill',
-    'Champion Skill 관련 API입니다.',
-    path='/championSkills'
-)
-
-response_model = champion_skills_ns.model('Champion Skills Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
-
-response_no_data_model = champion_skills_ns.model('Champion Skills No Data', {
-    'statusCode': fields.Integer(404)
-})
 
 
 def insert_champions_skill(champions):
@@ -84,15 +65,12 @@ def insert_champions_skill(champions):
         return 500
 
 
-@champion_skills_ns.route('/<int:champion_id>')
-@champion_skills_ns.response(500, 'Internal Server Error')
-class ChampionSkillsWithId(Resource):
-    @champion_skills_ns.response(200, 'Success', response_model)
-    @champion_skills_ns.response(404, 'No data', response_no_data_model)
-    def get(self, champion_id):
-        """Get champion skills with champion_id"""
-        champion = [x.serialize for x in session.query(ChampionSkill_model).filter_by(champion_id=champion_id)]
-        res = response.response_data(champion)
+def get_champion_skill(champion_id):
+    try:
+        champion_skill = [x.serialize for x in session.query(ChampionSkill_model).filter_by(champion_id=champion_id)]
+        res = response.response_data(champion_skill)
 
-        return res, res['statusCode']
+        return res
+    except Exception:
+        return {}, 500
 
