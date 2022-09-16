@@ -7,7 +7,7 @@ from app import session
 from ..models.champion import Champion as Champion_model, response_model
 from ..models.champion_skill import ChampionSkill as ChampionSkill_model
 
-from .champion_skill import ChampionSkills
+from .champion_skill import insert_champions_skill
 from ..util import response, riot_url, version as version_util
 
 champion_bp = Blueprint('champion_bp', __name__)
@@ -102,11 +102,17 @@ class AllChampion(Resource):
                     champions.append(riot_champions[idx])
 
                 session.add_all(champions)
-                session.commit()
+                champion_skill_status_code = insert_champions_skill(champions)
 
-            return '', 204
+                if champion_skill_status_code == 204:
+                    session.commit()
+                    return '', 204
+                else:
+                    session.rollback()
+                    return '', 500
         except Exception as e:
             session.rollback()
+            return '', 500
 
     @champion_ns.response(204, 'Delete all champion data and insert complete!')
     def put(self):
@@ -120,12 +126,10 @@ class AllChampion(Resource):
             champion_delete_status_code = res[1]
 
             if champion_delete_status_code == 204:
-                res1 = self.post()
-                res2 = ChampionSkills.post(ChampionSkills)
-                champion_insert_status_code = res1[1]
-                skill_delete_status_code = res2[1]
+                champion_response = self.post()
+                champion_status_code = champion_response[1]
 
-                if champion_insert_status_code == 204 and skill_delete_status_code == 204:
+                if champion_status_code == 204:
                     status_code = 204
                 else:
                     session.rollback()
@@ -140,14 +144,12 @@ class AllChampion(Resource):
     def delete(self):
         """ Delete Champions """
         try:
-            # 외래키로 인해 skill 테이블을 먼저 날려야 함.
-            session.query(ChampionSkill_model).delete()
+            # cascade 때문에 skills도 같이 삭제
             session.query(Champion_model).delete()
             session.commit()
 
             status_code = 204
-        except Exception as e:
-            print(e)
+        except Exception:
             status_code = 500
             session.rollback()
 
