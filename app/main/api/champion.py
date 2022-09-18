@@ -1,10 +1,10 @@
 from urllib import request
 from json import loads
 
-from flask import Blueprint
+from flask import Blueprint, request
 from flask_restx import Namespace, Resource, fields
 from app import session
-from ..models.champion import Champion as Champion_model, response_model
+from ..models.champion import Champion as Champion_model, response_all_model, response_name_model
 from ..models.champion_skill import response_model as champion_skill_response_model
 
 from .champion_skill import insert_champions_skill, get_champion_skill
@@ -17,8 +17,12 @@ champion_ns = Namespace(
     path='/champions'
 )
 
+request_model = champion_ns.model('Champion Id List', {
+    'champion_ids': fields.List(fields.Integer(1), description='Champion Id List', required=True, default=[1, 2, 3, 4, 55])
+})
+
 response_model = champion_ns.model('Champion Response Model', {
-    'results': fields.List(fields.String(response_model() | champion_skill_response_model())),
+    'results': fields.List(fields.String(response_all_model() | champion_skill_response_model())),
     'statusCode': fields.Integer(200)
 })
 
@@ -26,21 +30,47 @@ response_no_data_model = champion_ns.model('Champion No Data', {
     'statusCode': fields.Integer(404)
 })
 
+response_name_model = champion_ns.model('Champion Name Information', {
+    'results': fields.List(fields.String(response_name_model())),
+    'statusCode': fields.Integer(200)
+})
+
 
 @champion_ns.route('/')
 @champion_ns.response(500, 'Internal Server Error')
 class AllChampion(Resource):
-    # @champion_ns.response(200, 'Success', response_model)
-    # @champion_ns.response(404, 'No Data', response_no_data_model)
-    # def get(self):
-    #     """Get All Champion Data"""
-    #     champions = [x.serialize for x in session.query(Champion_model).all()]
-    #     res = response.response_data(champions)
-    # 
-    #     return res, res['statusCode']
+    @champion_ns.response(200, 'Success', response_model)
+    @champion_ns.response(404, 'No Data', response_no_data_model)
+    def get(self):
+        """Get All Champion Data"""
+        champions = [x.serialize for x in session.query(Champion_model).all()]
+        res = response.response_data(champions)
+
+        return res, res['statusCode']
+
+    @champion_ns.expect(request_model)
+    @champion_ns.response(200, 'Success Get Data', response_model)
+    @champion_ns.response(404, 'Bad Request')
+    def post(self):
+        """Select champions with body parameter."""
+        request_data = request.get_json()
+
+        if 'champion_ids' in request_data:
+            champion_ids = request_data['champion_ids']
+
+            try:
+                champions = [x.serialize for x in session.query(Champion_model).filter(Champion_model.champion_id.in_(tuple(champion_ids))).all()]
+                res = response.response_data(champions)
+
+                return res, res['statusCode']
+            except Exception as e:
+                return {'message': 'Internal Server Error'}, 500
+        else:
+            return {'message': 'Bad Request'}, 400
 
     @champion_ns.response(204, 'Champions data add or update completed!')
-    def post(self):
+    @champion_ns.response(503, 'Failed to receive champions information from Riot API')
+    def put(self):
         """Insert Champions data that doesn't exist."""
         version = version_util.get_version()
         url = riot_url.champions_url(version)
@@ -114,37 +144,11 @@ class AllChampion(Resource):
             session.rollback()
             return '', 500
 
-    @champion_ns.response(204, 'Delete all champion data and insert complete!')
-    def put(self):
-        """Insert All Champion After Delete All Champion"""
-        # DB savepoint
-        session.begin_nested()
-
-        try:
-            # champion_skill도 같이 delete 되기 때문에 추가 해줘야함
-            res = self.delete()
-            champion_delete_status_code = res[1]
-
-            if champion_delete_status_code == 204:
-                champion_response = self.post()
-                champion_status_code = champion_response[1]
-
-                if champion_status_code == 204:
-                    status_code = 204
-                else:
-                    session.rollback()
-                    status_code = 500
-        except Exception as e:
-            status_code = 500
-            session.rollback()
-
-        return '', status_code
-
     @champion_ns.response(204, 'Delete all champion data complete!')
     def delete(self):
         """ Delete Champions """
         try:
-            # cascade 때문에 skills도 같이 삭제
+            # cascade 때문에 skills도 같이 삭제됨.
             session.query(Champion_model).delete()
             session.commit()
 
@@ -178,3 +182,30 @@ class ChampionWithId(Resource):
             status_code = 500
 
         return response_data, status_code
+
+
+@champion_ns.route('/name')
+@champion_ns.response(200, 'Success', response_name_model)
+@champion_ns.response(404, 'No Found Data', response_no_data_model)
+@champion_ns.response(500, 'Internal Server Error')
+class ChampionName(Resource):
+    @champion_ns.expect(request_model)
+    def post(self):
+        """Get Champions name Because this using show thumbnail, name and routing page."""
+        request_data = request.get_json()
+
+        if 'champion_ids' in request_data:
+            champion_ids = request_data['champion_ids']
+
+            try:
+                champions = [dict(x) for x in session.query(Champion_model).filter(
+                    Champion_model.champion_id.in_(tuple(champion_ids))).with_entities(Champion_model.champion_id, Champion_model.champion_name, Champion_model.eng_name)]
+                res = response.response_data(champions)
+
+                return res, res['statusCode']
+            except Exception as e:
+                print(e)
+                return {'message': 'Internal Server Error'}, 500
+        else:
+            return {'message': 'Bad Request'}, 400
+        
