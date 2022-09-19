@@ -38,7 +38,81 @@ response_name_model = champion_ns.model('Champion Name Information', {
 })
 
 
-def insert_champions(champion_names):
+def insert_champions():
+    """Insert Champions data that doesn't exist."""
+    version = version_util.get_version()
+    url = riot_url.champions_url(version)
+
+    with request.urlopen(url) as res:
+        data = loads(res.read().decode())
+
+    # No Champions Data with Riot API
+    if 'data' not in data:
+        # Riot API Error Return
+        return 503
+
+    riot_champions = []
+
+    # add Champion Model List
+    try:
+        for key, info in data['data'].items():
+            riot_champions.append(Champion_model(
+                champion_id=info['key'],
+                champion_name=info['name'],
+                eng_name=info['id'],
+                sub_name=info['title'],
+                description=info['blurb'],
+                position='TOP',
+                tags=', '.join(info['tags']),
+                difficulty=info['info']['difficulty'],
+                hp=info['stats']['hp'],
+                hp_per_level=info['stats']['hpperlevel'],
+                mp=info['stats']['mp'],
+                mp_per_level=info['stats']['mpperlevel'],
+                move_speed=info['stats']['movespeed'],
+                armor=info['stats']['armor'],
+                armor_per_level=info['stats']['armorperlevel'],
+                attack_range=info['stats']['attackrange'],
+                attack_damage=info['stats']['attackdamage'],
+                attack_damage_per_level=info['stats']['attackdamageperlevel'],
+                attack_speed=info['stats']['attackspeed'],
+                attack_speed_per_level=info['stats']['attackspeedperlevel'],
+            ))
+
+        db_champions = [x.serialize for x in session.query(Champion_model).all()]
+
+        set1 = set([int(x.champion_id) for x in riot_champions])
+        set2 = set([int(x['champion_id']) for x in db_champions])
+
+        not_champions = list(set1 - set2)
+        champions = []
+
+        if not_champions:
+            for champion_id in not_champions:
+                # riot_champions에서 champion_id 없는 인덱스 반환
+                idx = next((
+                    index for (index, item) in enumerate(riot_champions)
+                    if int(item.champion_id) == int(champion_id)
+                ), None)
+
+                champions.append(riot_champions[idx])
+
+            session.add_all(champions)
+            champion_skill_status_code = insert_champions_skill(champions)
+
+            if champion_skill_status_code == 201:
+                session.commit()
+                return 201
+            else:
+                session.rollback()
+                return 500
+    except Exception as e:
+        session.rollback()
+        return '', 500
+
+
+def insert_champions_for_update(champion_names):
+    """Insert a few Champions for update"""
     try:
         champions = []
         champions_skills = []
@@ -123,7 +197,8 @@ def insert_champions(champion_names):
         return 500
 
 
-def delete_champions(champion_names):
+def delete_champions_for_update(champion_names):
+    """Delete a few Champions for update"""
     try:
         # cascade 때문에 skills도 같이 삭제됨.
         session.query(Champion_model).filter(Champion_model.eng_name.in_(tuple(champion_names))).delete()
@@ -161,82 +236,6 @@ class AllChampion(Resource):
                 return {'message': 'Internal Server Error'}, 500
         else:
             return {'message': 'Bad Request'}, 400
-
-    @champion_ns.response(204, 'Champions data add or update completed!')
-    @champion_ns.response(503, 'Failed to receive champions information from Riot API')
-    def put(self):
-        """Insert Champions data that doesn't exist."""
-        version = version_util.get_version()
-        url = riot_url.champions_url(version)
-
-        with request.urlopen(url) as res:
-            data = loads(res.read().decode())
-
-        # No Champions Data with Riot API
-        if 'data' not in data:
-            # Riot API Error Return
-            return {
-                'statusCode': 503,
-            }
-
-        riot_champions = []
-
-        # add Champion Model List
-        try:
-            for key, info in data['data'].items():
-                riot_champions.append(Champion_model(
-                    champion_id=info['key'],
-                    champion_name=info['name'],
-                    eng_name=info['id'],
-                    sub_name=info['title'],
-                    description=info['blurb'],
-                    position='TOP',
-                    tags=', '.join(info['tags']),
-                    difficulty=info['info']['difficulty'],
-                    hp=info['stats']['hp'],
-                    hp_per_level=info['stats']['hpperlevel'],
-                    mp=info['stats']['mp'],
-                    mp_per_level=info['stats']['mpperlevel'],
-                    move_speed=info['stats']['movespeed'],
-                    armor=info['stats']['armor'],
-                    armor_per_level=info['stats']['armorperlevel'],
-                    attack_range=info['stats']['attackrange'],
-                    attack_damage=info['stats']['attackdamage'],
-                    attack_damage_per_level=info['stats']['attackdamageperlevel'],
-                    attack_speed=info['stats']['attackspeed'],
-                    attack_speed_per_level=info['stats']['attackspeedperlevel'],
-                ))
-
-            db_champions = [x.serialize for x in session.query(Champion_model).all()]
-
-            set1 = set([int(x.champion_id) for x in riot_champions])
-            set2 = set([int(x['champion_id']) for x in db_champions])
-
-            not_champions = list(set1 - set2)
-            champions = []
-
-            if not_champions:
-                for champion_id in not_champions:
-                    # riot_champions에서 champion_id 없는 인덱스 반환
-                    idx = next((
-                        index for (index, item) in enumerate(riot_champions)
-                        if int(item.champion_id) == int(champion_id)
-                    ), None)
-
-                    champions.append(riot_champions[idx])
-
-                session.add_all(champions)
-                champion_skill_status_code = insert_champions_skill(champions)
-
-                if champion_skill_status_code == 204:
-                    session.commit()
-                    return '', 204
-                else:
-                    session.rollback()
-                    return '', 500
-        except Exception as e:
-            session.rollback()
-            return '', 500
 
 
 @champion_ns.route('/<int:champion_id>')

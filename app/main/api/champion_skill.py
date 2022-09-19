@@ -60,7 +60,7 @@ def insert_champions_skill(champions):
         session.add_all(champions_skills)
         session.commit()
 
-        return 204
+        return 201
     except Exception as e:
         return 500
 
