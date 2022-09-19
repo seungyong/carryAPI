@@ -73,4 +73,3 @@ def get_champion_skill(champion_id):
         return res
     except Exception:
         return {}, 500
-

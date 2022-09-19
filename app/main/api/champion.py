@@ -19,7 +19,8 @@ champion_ns = Namespace(
 )
 
 request_model = champion_ns.model('Champion Id List', {
-    'champion_ids': fields.List(fields.Integer(1), description='Champion Id List', required=True, default=[1, 2, 3, 4, 55])
+    'champion_ids': fields.List(fields.Integer(1), description='Champion Id List', required=True,
+                                default=[1, 2, 3, 4, 55])
 })
 
 response_model = champion_ns.model('Champion Response Model', {
@@ -140,15 +141,6 @@ def delete_champions(champion_names):
 @champion_ns.route('/')
 @champion_ns.response(500, 'Internal Server Error')
 class AllChampion(Resource):
-    @champion_ns.response(200, 'Success', response_model)
-    @champion_ns.response(404, 'No Data', response_no_data_model)
-    def get(self):
-        """Get All Champion Data"""
-        champions = [x.serialize for x in session.query(Champion_model).all()]
-        res = response.response_data(champions)
-
-        return res, res['statusCode']
-
     @champion_ns.expect(request_model)
     @champion_ns.response(200, 'Success Get Data', response_model)
     @champion_ns.response(404, 'Bad Request')
@@ -160,7 +152,8 @@ class AllChampion(Resource):
             champion_ids = request_data['champion_ids']
 
             try:
-                champions = [x.serialize for x in session.query(Champion_model).filter(Champion_model.champion_id.in_(tuple(champion_ids))).all()]
+                champions = [x.serialize for x in session.query(Champion_model).filter(
+                    Champion_model.champion_id.in_(tuple(champion_ids))).all()]
                 res = response.response_data(champions)
 
                 return res, res['statusCode']
@@ -245,21 +238,6 @@ class AllChampion(Resource):
             session.rollback()
             return '', 500
 
-    @champion_ns.response(204, 'Delete all champion data complete!')
-    def delete(self):
-        """ Delete Champions """
-        try:
-            # cascade 때문에 skills도 같이 삭제됨.
-            session.query(Champion_model).delete()
-            session.commit()
-
-            status_code = 204
-        except Exception:
-            status_code = 500
-            session.rollback()
-
-        return '', status_code
-
 
 @champion_ns.route('/<int:champion_id>')
 @champion_ns.response(200, 'Success', response_model)
@@ -300,12 +278,13 @@ class ChampionName(Resource):
 
             try:
                 champions = [dict(x) for x in session.query(Champion_model).filter(
-                    Champion_model.champion_id.in_(tuple(champion_ids))).with_entities(Champion_model.champion_id, Champion_model.champion_name, Champion_model.eng_name)]
+                    Champion_model.champion_id.in_(tuple(champion_ids))).with_entities(Champion_model.champion_id,
+                                                                                       Champion_model.champion_name,
+                                                                                       Champion_model.eng_name)]
                 res = response.response_data(champions)
 
                 return res, res['statusCode']
-            except Exception as e:
-                print(e)
+            except Exception:
                 return {'message': 'Internal Server Error'}, 500
         else:
             return {'message': 'Bad Request'}, 400
