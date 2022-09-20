@@ -1,14 +1,14 @@
-from urllib import request
+from urllib import request as url_request
 from json import loads
 
-from flask import Blueprint
+from flask import Blueprint, request as flask_request
 from flask_restx import Namespace, Resource, fields
 from app import session
 from ..models.champion import Champion as Champion_model, response_all_model, response_name_model
 from ..models.champion_skill import ChampionSkill as ChampionSkill_model
 from ..models.champion_skill import response_model as champion_skill_response_model
 
-from .champion_skill import insert_champions_skill, get_champion_skill
+from .champion_skill import insert_champions_skill, get_champions_skill
 from ..util import response, riot_url, version as version_util
 
 champion_bp = Blueprint('champion_bp', __name__)
@@ -19,7 +19,7 @@ champion_ns = Namespace(
 )
 
 request_model = champion_ns.model('Champion Id List', {
-    'champion_ids': fields.List(fields.Integer(1), description='Champion Id List', required=True,
+    'champions_id': fields.List(fields.Integer(1), description='Champion Id List', required=True,
                                 default=[1, 2, 3, 4, 55])
 })
 
@@ -43,7 +43,7 @@ def insert_champions():
     version = version_util.get_version()
     url = riot_url.champions_url(version)
 
-    with request.urlopen(url) as res:
+    with url_request.urlopen(url) as res:
         data = loads(res.read().decode())
 
     # No Champions Data with Riot API
@@ -121,7 +121,7 @@ def insert_champions_for_update(champion_names):
         for champion in champion_names:
             url = riot_url.champion_url(version, champion)
 
-            with request.urlopen(url) as res:
+            with url_request.urlopen(url) as res:
                 data = loads(res.read().decode())
                 info = data['data'][champion]
 
@@ -221,45 +221,41 @@ class AllChampion(Resource):
     @champion_ns.response(404, 'Bad Request')
     def post(self):
         """Select champions with body parameter."""
-        request_data = request.get_json()
+        request_data = flask_request.get_json()
 
-        if 'champion_ids' in request_data:
-            champion_ids = request_data['champion_ids']
+        if 'champions_id' in request_data:
+            champions_id = request_data['champions_id']
 
             try:
                 champions = [x.serialize for x in session.query(Champion_model).filter(
-                    Champion_model.champion_id.in_(tuple(champion_ids))).all()]
-                res = response.response_data(champions)
+                    Champion_model.champion_id.in_(tuple(champions_id))).all()]
 
-                return res, res['statusCode']
+                champions_response = response.response_data(champions)
+                champions_skill_response = get_champions_skill(champions_id)
+
+                if champions_response['statusCode'] == 200 and champions_skill_response['statusCode'] == 200:
+                    champions_info = []
+
+                    try:
+                        for idx in range(len(champions_response['results'])):
+                            champions_info.append(
+                                champions_response['results'][idx] | champions_skill_response['results'][idx])
+                    except IndexError:
+                        pass
+
+                    result = {'results': champions_info, 'statusCode': 200}
+                elif champions_response['statusCode'] != 200:
+                    result = {'message': 'Not Select Champions', 'statusCode': 404}
+                elif champions_skill_response != 200:
+                    result = {'message': 'Not Select Champions Skill', 'statusCode': 404}
+                else:
+                    result = {'message': 'API Error', 'statusCode': 500}
+
+                return result, result['statusCode']
             except Exception as e:
                 return {'message': 'Internal Server Error'}, 500
         else:
             return {'message': 'Bad Request'}, 400
-
-
-@champion_ns.route('/<int:champion_id>')
-@champion_ns.response(200, 'Success', response_model)
-@champion_ns.response(404, 'No Found Data', response_no_data_model)
-@champion_ns.response(500, 'Internal Server Error')
-class ChampionWithId(Resource):
-    def get(self, champion_id):
-        """Get One Champion Data"""
-        champion = [x.serialize for x in session.query(Champion_model).filter_by(champion_id=champion_id)]
-        response_champion = response.response_data(champion)
-        response_champion_skill = get_champion_skill(champion_id)
-
-        if response_champion['statusCode'] == 404:
-            response_data = {}
-            status_code = 404
-        elif response_champion_skill['statusCode'] == 200:
-            response_data = response_champion['results'][0] | response_champion_skill['results'][0]
-            status_code = 200
-        else:
-            response_data = {}
-            status_code = 500
-
-        return response_data, status_code
 
 
 @champion_ns.route('/name')
@@ -270,14 +266,14 @@ class ChampionName(Resource):
     @champion_ns.expect(request_model)
     def post(self):
         """Get Champions name Because this using show thumbnail, name and routing page."""
-        request_data = request.get_json()
+        request_data = flask_request.get_json()
 
-        if 'champion_ids' in request_data:
-            champion_ids = request_data['champion_ids']
+        if 'champions_id' in request_data:
+            champions_id = request_data['champions_id']
 
             try:
                 champions = [dict(x) for x in session.query(Champion_model).filter(
-                    Champion_model.champion_id.in_(tuple(champion_ids))).with_entities(Champion_model.champion_id,
+                    Champion_model.champion_id.in_(tuple(champions_id))).with_entities(Champion_model.champion_id,
                                                                                        Champion_model.champion_name,
                                                                                        Champion_model.eng_name)]
                 res = response.response_data(champions)

@@ -8,7 +8,7 @@ from ..util import response, riot_url, version as version_util
 
 def insert_champions_skill(champions):
     try:
-        champions_skills = []
+        champions_skill = []
         version = version_util.get_version()
 
         for champion in champions:
@@ -18,7 +18,7 @@ def insert_champions_skill(champions):
                 data = loads(res.read().decode())
                 info = data['data'][champion.eng_name]
 
-                champions_skills.append(ChampionSkill_model(
+                champions_skill.append(ChampionSkill_model(
                     champion_id=champion.champion_id,
                     p_name=info['passive']['name'],
                     p_description=info['passive']['description'],
@@ -57,7 +57,7 @@ def insert_champions_skill(champions):
                     r_thumbnail=info['spells'][3]['image']['full'],
                 ))
 
-        session.add_all(champions_skills)
+        session.add_all(champions_skill)
         session.commit()
 
         return 201
@@ -65,9 +65,11 @@ def insert_champions_skill(champions):
         return 500
 
 
-def get_champion_skill(champion_id):
+def get_champions_skill(champions_id):
     try:
-        champion_skill = [x.serialize for x in session.query(ChampionSkill_model).filter_by(champion_id=champion_id)]
+        champion_skill = [x.serialize for x in
+                          session.query(ChampionSkill_model).filter(
+                              ChampionSkill_model.champion_id.in_(tuple(champions_id))).all()]
         res = response.response_data(champion_skill)
 
         return res
