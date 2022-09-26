@@ -267,7 +267,8 @@ class AllChampion(Resource):
 @champion_ns.response(404, 'No Found Data', response_no_data_model)
 @champion_ns.response(500, 'Internal Server Error')
 class ChampionName(Resource):
-    def get(self):
+    @staticmethod
+    def get():
         """Get All Champion name, id"""
         try:
             champion_controller = ChampionController()
