@@ -4,12 +4,16 @@ from json import loads
 from flask import Blueprint, request as flask_request
 from flask_restx import Namespace, Resource, fields
 from app import session
+
+from ..controller.champion import ChampionController
+
 from ..models.champion import Champion as Champion_model, response_all_model, response_name_model
 from ..models.champion_skill import ChampionSkill as ChampionSkill_model
 from ..models.champion_skill import response_model as champion_skill_response_model
 
 from .champion_skill import insert_champions_skill, get_champions_skill
-from ..util import response, riot_url, version as version_util
+from ..util import riot_url, version as version_util
+from ..util.response import response_data
 
 champion_bp = Blueprint('champion_bp', __name__)
 champion_ns = Namespace(
@@ -230,7 +234,7 @@ class AllChampion(Resource):
                 champions = [x.serialize for x in session.query(Champion_model).filter(
                     Champion_model.champion_id.in_(tuple(champions_id))).all()]
 
-                champions_response = response.response_data(champions)
+                champions_response = response_data(champions)
                 champions_skill_response = get_champions_skill(champions_id)
 
                 if champions_response['statusCode'] == 200 and champions_skill_response['statusCode'] == 200:
@@ -263,6 +267,16 @@ class AllChampion(Resource):
 @champion_ns.response(404, 'No Found Data', response_no_data_model)
 @champion_ns.response(500, 'Internal Server Error')
 class ChampionName(Resource):
+    def get(self):
+        """Get All Champion name, id"""
+        try:
+            champion_controller = ChampionController()
+            result = champion_controller.get_all_champion_name()
+
+            return result, result['statusCode']
+        except Exception:
+            return {'message': 'Internal Server Error', 'statusCode': 500}
+
     @champion_ns.expect(request_model)
     def post(self):
         """Get Champions name Because this using show thumbnail, name and routing page."""
@@ -276,7 +290,7 @@ class ChampionName(Resource):
                     Champion_model.champion_id.in_(tuple(champions_id))).with_entities(Champion_model.champion_id,
                                                                                        Champion_model.champion_name,
                                                                                        Champion_model.eng_name)]
-                res = response.response_data(champions)
+                res = response_data(champions)
 
                 return res, res['statusCode']
             except Exception:
