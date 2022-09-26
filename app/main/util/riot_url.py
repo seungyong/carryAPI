@@ -35,6 +35,8 @@ def matches_url(puuid, start, count, queue=None):
     else:
         return f"https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start={start}&count={count}&queue={queue}"
 
-
 def matches_info_url(game_id):
     return f"https://asia.api.riotgames.com/lol/match/v5/matches/{game_id}"
+
+def runes_url(api_version):
+    return f"https://ddragon.leagueoflegends.com/cdn/{api_version}/data/ko_KR/runesReforged.json"

@@ -47,7 +47,7 @@ class AllChampion(Resource):
 
         with request.urlopen(url) as res:
             data = loads(res.read().decode())
-
+        print(data);
         # No Champions Data with Riot API
         if 'data' not in data:
             # Riot API Error Return
