@@ -1,7 +1,7 @@
 from app import db
 from flask_restx import fields, marshal
 
-response_fields = {
+response_all_fields = {
     'champion_id': fields.Integer(),
     'champion_name': fields.String(),
     'eng_name': fields.String(),
@@ -24,7 +24,7 @@ response_fields = {
     'attack_speed_per_level': fields.Float(),
 }
 
-dummy_data = {
+dummy_all_data = {
     "champion_id": 266,
     "champion_name": "아트록스",
     "eng_name": "Aatrox",
@@ -49,9 +49,25 @@ dummy_data = {
     "attack_speed_per_level": 2.5
 }
 
+response_name_fields = {
+    'champion_id': fields.Integer(),
+    'champion_name': fields.String(),
+    'eng_name': fields.String(),
+}
 
-def response_model():
-    return marshal(dummy_data, response_fields)
+dummy_name_data = {
+    "champion_id": 266,
+    "champion_name": "아트록스",
+    "eng_name": "Aatrox",
+}
+
+
+def response_all_model():
+    return marshal(dummy_all_data, response_all_fields)
+
+
+def response_name_model():
+    return marshal(dummy_name_data, response_name_fields)
 
 
 class Champion(db.Model):
@@ -156,4 +172,12 @@ class Champion(db.Model):
             'attack_damage_per_level': self.attack_damage_per_level,
             'attack_speed': self.attack_speed,
             'attack_speed_per_level': self.attack_speed_per_level
+        }
+
+    @property
+    def name_serialize(self):
+        return {
+            'champion_id': self.champion_id,
+            'champion_name': self.champion_name,
+            'eng_name': self.eng_name
         }

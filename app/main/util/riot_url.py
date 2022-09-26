@@ -1,5 +1,6 @@
 from urllib import parse
 
+
 def champions_url(api_version):
     return f"https://ddragon.leagueoflegends.com/cdn/{api_version}/data/ko_KR/champion.json"
 
