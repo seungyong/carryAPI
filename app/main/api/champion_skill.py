@@ -61,7 +61,7 @@ def insert_champions_skill(champions):
         session.commit()
 
         return 201
-    except Exception as e:
+    except Exception:
         return 500
 
 

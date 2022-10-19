@@ -7,9 +7,8 @@ from app import session
 
 from ..controller.champion import ChampionController
 
-from ..models.champion import Champion as Champion_model, response_all_model, response_name_model
+from ..models.champion import Champion as Champion_model
 from ..models.champion_skill import ChampionSkill as ChampionSkill_model
-from ..models.champion_skill import response_model as champion_skill_response_model
 
 from .champion_skill import insert_champions_skill, get_champions_skill
 from ..util import riot_url, version as version_util
@@ -27,18 +26,8 @@ request_model = champion_ns.model('Champion Id List', {
                                 default=[1, 2, 3, 4, 55])
 })
 
-response_model = champion_ns.model('Champion Response Model', {
-    'results': fields.List(fields.String(response_all_model() | champion_skill_response_model())),
-    'statusCode': fields.Integer(200)
-})
-
 response_no_data_model = champion_ns.model('Champion No Data', {
     'statusCode': fields.Integer(404)
-})
-
-response_name_model = champion_ns.model('Champion Name Information', {
-    'results': fields.List(fields.String(response_name_model())),
-    'statusCode': fields.Integer(200)
 })
 
 
@@ -62,7 +51,7 @@ def insert_champions():
         for key, info in data['data'].items():
             riot_champions.append(Champion_model(
                 champion_id=info['key'],
-                champion_name=info['name'],
+                kor_name=info['name'],
                 eng_name=info['id'],
                 sub_name=info['title'],
                 description=info['blurb'],
@@ -81,6 +70,16 @@ def insert_champions():
                 attack_damage_per_level=info['stats']['attackdamageperlevel'],
                 attack_speed=info['stats']['attackspeed'],
                 attack_speed_per_level=info['stats']['attackspeedperlevel'],
+                score=12.5,
+                current_tier=1,
+                prev_tier=5,
+                ad_damage_percent=90,
+                ap_damage_percent=10,
+                total_ban=10,
+                total_pick=10,
+                total_win=5,
+                total_lose=5,
+                total_match=10
             ))
 
         db_champions = [x.serialize for x in session.query(Champion_model).all()]
@@ -110,7 +109,7 @@ def insert_champions():
             else:
                 session.rollback()
                 return 500
-    except Exception as e:
+    except Exception:
         session.rollback()
         return '', 500
 
@@ -221,7 +220,7 @@ def delete_champions_for_update(champion_names):
 @champion_ns.response(500, 'Internal Server Error')
 class AllChampion(Resource):
     @champion_ns.expect(request_model)
-    @champion_ns.response(200, 'Success Get Data', response_model)
+    @champion_ns.response(200, 'Success Get Data')
     @champion_ns.response(404, 'Bad Request')
     def post(self):
         """Select champions with body parameter."""
@@ -263,7 +262,7 @@ class AllChampion(Resource):
 
 
 @champion_ns.route('/name')
-@champion_ns.response(200, 'Success', response_name_model)
+@champion_ns.response(200, 'Success')
 @champion_ns.response(404, 'No Found Data', response_no_data_model)
 @champion_ns.response(500, 'Internal Server Error')
 class ChampionName(Resource):
