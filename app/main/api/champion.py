@@ -11,8 +11,10 @@ from ..models.champion import Champion as Champion_model
 from ..models.champion_skill import ChampionSkill as ChampionSkill_model
 
 from .champion_skill import insert_champions_skill, get_champions_skill
-from ..util import riot_url, version as version_util
-from ..util.response import response_data
+
+from ..util import constants, riot_url, version as version_util
+from ..exception.data_not_found import DataNotFound
+from ..exception.internal_server_error import InternalServerError
 
 champion_bp = Blueprint('champion_bp', __name__)
 champion_ns = Namespace(
@@ -26,9 +28,8 @@ request_model = champion_ns.model('Champion Id List', {
                                 default=[1, 2, 3, 4, 55])
 })
 
-response_no_data_model = champion_ns.model('Champion No Data', {
-    'statusCode': fields.Integer(404)
-})
+response_no_data_model = champion_ns.model('Not Found Champion Data', DataNotFound.response_model())
+response_internal_server_error_model = champion_ns.model('Server Error', InternalServerError.response_model())
 
 
 def insert_champions():
@@ -217,54 +218,14 @@ def delete_champions_for_update(champion_names):
 
 
 @champion_ns.route('/')
-@champion_ns.response(500, 'Internal Server Error')
 class AllChampion(Resource):
-    @champion_ns.expect(request_model)
-    @champion_ns.response(200, 'Success Get Data')
-    @champion_ns.response(404, 'Bad Request')
-    def post(self):
-        """Select champions with body parameter."""
-        request_data = flask_request.get_json()
-
-        if 'champions_id' in request_data:
-            champions_id = request_data['champions_id']
-
-            try:
-                champions = [x.serialize for x in session.query(Champion_model).filter(
-                    Champion_model.champion_id.in_(tuple(champions_id))).all()]
-
-                champions_response = response_data(champions)
-                champions_skill_response = get_champions_skill(champions_id)
-
-                if champions_response['statusCode'] == 200 and champions_skill_response['statusCode'] == 200:
-                    champions_info = []
-
-                    try:
-                        for idx in range(len(champions_response['results'])):
-                            champions_info.append(
-                                champions_response['results'][idx] | champions_skill_response['results'][idx])
-                    except IndexError:
-                        pass
-
-                    result = {'results': champions_info, 'statusCode': 200}
-                elif champions_response['statusCode'] != 200:
-                    result = {'message': 'Not Select Champions', 'statusCode': 404}
-                elif champions_skill_response != 200:
-                    result = {'message': 'Not Select Champions Skill', 'statusCode': 404}
-                else:
-                    result = {'message': 'API Error', 'statusCode': 500}
-
-                return result, result['statusCode']
-            except Exception as e:
-                return {'message': 'Internal Server Error'}, 500
-        else:
-            return {'message': 'Bad Request'}, 400
+    pass
 
 
 @champion_ns.route('/name')
 @champion_ns.response(200, 'Success')
 @champion_ns.response(404, 'No Found Data', response_no_data_model)
-@champion_ns.response(500, 'Internal Server Error')
+@champion_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
 class ChampionName(Resource):
     @staticmethod
     def get():
@@ -273,27 +234,9 @@ class ChampionName(Resource):
             champion_controller = ChampionController()
             result = champion_controller.get_all_champion_name()
 
-            return result, result['statusCode']
-        except Exception:
-            return {'message': 'Internal Server Error', 'statusCode': 500}
-
-    @champion_ns.expect(request_model)
-    def post(self):
-        """Get Champions name Because this using show thumbnail, name and routing page."""
-        request_data = flask_request.get_json()
-
-        if 'champions_id' in request_data:
-            champions_id = request_data['champions_id']
-
-            try:
-                champions = [dict(x) for x in session.query(Champion_model).filter(
-                    Champion_model.champion_id.in_(tuple(champions_id))).with_entities(Champion_model.champion_id,
-                                                                                       Champion_model.champion_name,
-                                                                                       Champion_model.eng_name)]
-                res = response_data(champions)
-
-                return res, res['statusCode']
-            except Exception:
-                return {'message': 'Internal Server Error'}, 500
-        else:
-            return {'message': 'Bad Request'}, 400
+            return result, constants.OK
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except:
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
