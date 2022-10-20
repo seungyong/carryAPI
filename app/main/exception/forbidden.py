@@ -4,10 +4,10 @@ from flask_restx import fields
 from app.main.util.constants import *
 
 
-class DataNotFound(Exception):
+class Forbidden(Exception):
     def __init__(self, message):
-        self.error = NOT_FOUND['error']
-        self.code = NOT_FOUND['code']
+        self.error = FORBIDDEN['error']
+        self.code = FORBIDDEN['code']
         self.message = message
         self.path = request.path
 
@@ -19,8 +19,8 @@ class DataNotFound(Exception):
     @staticmethod
     def response_model():
         return {
-            'error': fields.String(NOT_FOUND['error']),
-            'code': fields.Integer(NOT_FOUND['code']),
-            'message': fields.String('Not Found Data'),
+            'error': fields.String(FORBIDDEN['error']),
+            'code': fields.Integer(FORBIDDEN['code']),
+            'message': fields.String("You can't access this url or not found url"),
             'path': fields.String('Request URL')
         }

@@ -84,7 +84,7 @@ class Champion(db.Model):
     def serialize(self):
         return {
             'champion_id': self.champion_id,
-            'champion_name': self.champion_name,
+            'kor_name': self.kor_name,
             'eng_name': self.eng_name,
             'sub_name': self.sub_name,
             'description': self.description,

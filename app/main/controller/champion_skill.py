@@ -1,24 +1,25 @@
-from urllib import request
 from json import loads
+from urllib import request as url_request
 
 from app import session
-from ..models.champion_skill import ChampionSkill as ChampionSkill_model
-from ..util import response, riot_url, version as version_util
+from ..models.champion_skill import ChampionSkill
+from ..util.single_ton import Singleton
+from ..util.riot_url import champion_url
 
 
-def insert_champions_skill(champions):
-    try:
+class ChampionSkillController(metaclass=Singleton):
+    @staticmethod
+    def get_champions_skill_with_api(champions, version):
         champions_skill = []
-        version = version_util.get_version()
 
         for champion in champions:
-            url = riot_url.champion_url(version, champion.eng_name)
+            url = champion_url(version, champion.eng_name)
 
-            with request.urlopen(url) as res:
+            with url_request.urlopen(url) as res:
                 data = loads(res.read().decode())
                 info = data['data'][champion.eng_name]
 
-                champions_skill.append(ChampionSkill_model(
+                champions_skill.append(ChampionSkill(
                     champion_id=champion.champion_id,
                     p_name=info['passive']['name'],
                     p_description=info['passive']['description'],
@@ -57,21 +58,16 @@ def insert_champions_skill(champions):
                     r_thumbnail=info['spells'][3]['image']['full'],
                 ))
 
-        session.add_all(champions_skill)
-        session.commit()
+        return champions_skill
 
-        return 201
-    except Exception:
-        return 500
-
-
-def get_champions_skill(champions_id):
-    try:
-        champion_skill = [x.serialize for x in
-                          session.query(ChampionSkill_model).filter(
-                              ChampionSkill_model.champion_id.in_(tuple(champions_id))).all()]
-        res = response.response_data(champion_skill)
-
-        return res
-    except Exception:
-        return {}, 500
+    def get_champions_skill_with_db(champions_id):
+        pass
+        # try:
+        #     champion_skill = [x.serialize for x in
+        #                       session.query(ChampionSkill).filter(
+        #                           ChampionSkill.champion_id.in_(tuple(champions_id))).all()]
+        #     res = response.response_data(champion_skill)
+        #
+        #     return res
+        # except Exception:
+        #     return {}, 500

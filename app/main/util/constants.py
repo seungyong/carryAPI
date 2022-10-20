@@ -9,6 +9,10 @@ UNAUTHORIZED = {
     'error': 'Unauthorized',
     'code': 401
 }
+FORBIDDEN = {
+    'error': 'Forbidden',
+    'code': 403
+}
 NOT_FOUND = {
     'error': 'Not Found',
     'code': 404
