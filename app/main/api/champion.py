@@ -1,6 +1,3 @@
-from urllib import request as url_request
-from json import loads
-
 from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 from app import session
@@ -36,6 +33,7 @@ class AllChampion(Resource):
     @champion_ns.response(201, 'Created')
     @champion_ns.response(403, 'Forbidden', response_forbidden_model)
     def post():
+        """Insert Champions data that doesn't exist. (Admin API)"""
         try:
             champion_controller = ChampionController()
             code = champion_controller.insert_champion()
@@ -67,7 +65,7 @@ class ChampionName(Resource):
             return result, constants.OK
         except DataNotFound as e:
             return e.__dict__, e.code
-        except:
+        except Exception:
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
