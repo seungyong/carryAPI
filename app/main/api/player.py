@@ -7,9 +7,9 @@ from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 
 from app import session
-from ..models.player import Player as Player_model, response_model
+from ..models.player import Player as Player_model
 
-from ..util import response, riot_url, version as version_util
+from ..util import response, riot_url
 
 player_bp = Blueprint('player_bp', __name__)
 player_ns = Namespace(
@@ -17,11 +17,6 @@ player_ns = Namespace(
     'Player 관련 API입니다.',
     path='/players'
 )
-
-response_model = player_ns.model('Player Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
 
 response_no_data_model = player_ns.model('Player No Data', {
     'statusCode': fields.Integer(404)
@@ -31,21 +26,21 @@ response_no_data_model = player_ns.model('Player No Data', {
 @player_ns.route('/<string:username>')
 @player_ns.response(500, 'Internal Server Error')
 class GameWithUsername(Resource):
-    @player_ns.response(200, 'Success', response_model)
+    @player_ns.response(200, 'Success')
     @player_ns.response(404, 'No Data', response_no_data_model)
     def get(self, username):
         """Get player data with username."""
-        players = [x.serialize for x in session.query(Player_model).filter_by(username=username)]
+        players = [x.serialize for x in session.query(Player_model).filter_by(summoner_name=username)]
         res = response.response_data(players)
 
         return res, res['statusCode']
 
-    @player_ns.response(200, 'Success Insert User Data', response_model)
+    @player_ns.response(200, 'Success Insert User Data')
     @player_ns.response(400, 'Already User Data')
     @player_ns.response(404, 'No Search User Data')
     def post(self, username):
         """Insert player data with username."""
-        duplicated_player = [x.serialize for x in session.query(Player_model).filter_by(username=username)]
+        duplicated_player = [x.serialize for x in session.query(Player_model).filter_by(summoner_name=username)]
 
         if duplicated_player:
             return '', 400
@@ -70,7 +65,7 @@ class GameWithUsername(Resource):
         player.summoner_id = data['id']
         player.puuid = data['puuid']
         player.profile_icon_id = data['profileIconId']
-        player.username = data['name']
+        player.summoner_name = data['name']
         player.level = data['summonerLevel']
 
         url = riot_url.user_info_url(data['id'])

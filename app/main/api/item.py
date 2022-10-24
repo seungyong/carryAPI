@@ -4,10 +4,9 @@ from re import compile, sub
 
 from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
-from sqlalchemy.testing.exclusions import tags
 
 from app import session
-from ..models.item import Item as Item_model, response_model
+from ..models.item import Item as Item_model
 
 from ..util import response, riot_url, version as version_util
 
@@ -18,11 +17,6 @@ item_ns = Namespace(
     path='/items'
 )
 
-response_model = item_ns.model('Item Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
-
 response_no_data_model = item_ns.model('Item No Data', {
     'statusCode': fields.Integer(404)
 })
@@ -31,7 +25,7 @@ response_no_data_model = item_ns.model('Item No Data', {
 @item_ns.route('/')
 @item_ns.response(500, 'Internal Server Error')
 class AllItem(Resource):
-    @item_ns.response(200, 'Success', response_model)
+    @item_ns.response(200, 'Success')
     @item_ns.response(404, 'No Data', response_no_data_model)
     def get(self):
         """Get All item data."""
@@ -154,7 +148,7 @@ class AllItem(Resource):
 @item_ns.route('/<int:item_id>')
 @item_ns.response(500, 'Internal Server Error')
 class ItemWithId(Resource):
-    @item_ns.response(200, 'Success', response_model)
+    @item_ns.response(200, 'Success')
     @item_ns.response(404, 'No Data', response_no_data_model)
     def get(self, item_id):
         """Get item data with item_id"""

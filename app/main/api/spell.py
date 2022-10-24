@@ -1,12 +1,11 @@
 from urllib import request
 from json import loads
-from re import compile, sub
 
 from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 
 from app import session
-from ..models.spell import Spell as Spell_model, response_model
+from ..models.spell import Spell as Spell_model
 
 from ..util import response, riot_url, version as version_util
 
@@ -17,11 +16,6 @@ spell_ns = Namespace(
     path='/spells'
 )
 
-response_model = spell_ns.model('Spell Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
-
 response_no_data_model = spell_ns.model('Spell No Data', {
     'statusCode': fields.Integer(404)
 })
@@ -30,7 +24,7 @@ response_no_data_model = spell_ns.model('Spell No Data', {
 @spell_ns.route('/')
 @spell_ns.response(500, 'Internal Server Error')
 class AllItem(Resource):
-    @spell_ns.response(200, 'Success', response_model)
+    @spell_ns.response(200, 'Success')
     @spell_ns.response(404, 'No Data', response_no_data_model)
     def get(self):
         """Get All spell data."""
@@ -132,7 +126,7 @@ class AllItem(Resource):
 @spell_ns.route('/<string:spell_id>')
 @spell_ns.response(500, 'Internal Server Error')
 class SpellWithId(Resource):
-    @spell_ns.response(200, 'Success', response_model)
+    @spell_ns.response(200, 'Success')
     @spell_ns.response(404, 'No Data', response_no_data_model)
     def get(self, spell_id):
         """Get Spell data with spell_id"""

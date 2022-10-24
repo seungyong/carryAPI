@@ -7,7 +7,7 @@ from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 
 from app import session
-from ..models.rune import Rune as Rune_model, response_model
+from ..models.rune import Rune as Rune_model
 
 from ..util import response, riot_url, version as version_util
 
@@ -18,11 +18,6 @@ rune_ns = Namespace(
     path='/runes'
 )
 
-response_model = rune_ns.model('Runes Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
-
 response_no_data_model = rune_ns.model('Rune No Data', {
     'statusCode': fields.Integer(404)
 })
@@ -31,7 +26,7 @@ response_no_data_model = rune_ns.model('Rune No Data', {
 @rune_ns.route('/')
 @rune_ns.response(500, 'Internal Server Error')
 class AllRunes(Resource):
-    @rune_ns.response(200, 'Success', response_model)
+    @rune_ns.response(200, 'Success')
     @rune_ns.response(404, 'No Data', response_no_data_model)
     def get(self):
         """Get All Rune data."""
@@ -147,7 +142,7 @@ class AllRunes(Resource):
 @rune_ns.route('/<string:rune_id>')
 @rune_ns.response(500, 'Internal Server Error')
 class RuneWithId(Resource):
-    @rune_ns.response(200, 'Success', response_model)
+    @rune_ns.response(200, 'Success')
     @rune_ns.response(404, 'No Data', response_no_data_model)
     def get(self, rune_id):
         """Get Rune data with rune_id"""

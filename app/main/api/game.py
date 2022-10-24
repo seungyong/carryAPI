@@ -8,7 +8,7 @@ from flask_restx import Namespace, Resource, fields
 from sqlalchemy import desc
 
 from app import session
-from ..models.game import Game as Game_model, response_model
+from ..models.game import Game as Game_model
 from ..models.game_player import GamePlayer as Game_player_model
 from ..models.game_team_info import GameTeamInfo as Game_team_info_model
 
@@ -20,11 +20,6 @@ game_ns = Namespace(
     'Game 관련 API입니다.',
     path='/games'
 )
-
-response_model = game_ns.model('Game Response Model', {
-    'results': fields.List(fields.String(response_model())),
-    'statusCode': fields.Integer(200)
-})
 
 response_no_data_model = game_ns.model('Game No Data', {
     'statusCode': fields.Integer(404)
@@ -42,7 +37,7 @@ class AllGame(Resource):
             'queue': {'description': 'Queue Type', 'default': None, 'type': 'int'}
         }
     )
-    @game_ns.response(200, 'Success', response_model)
+    @game_ns.response(200, 'Success')
     @game_ns.response(204, 'No Data', response_no_data_model)
     def get(self, puuid):
         """Get User game History."""
@@ -61,15 +56,15 @@ class AllGame(Resource):
 
         if queue is None:
             game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
-                .filter(Game_model.puuid == puuid).join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
-                .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
-                .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
+            .filter(Game_model.puuid == puuid).join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
+            .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
+            .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
         else:
             game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
-                .filter(Game_model.puuid == puuid, Game_model.queue_id == queue)
-                .join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
-                .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
-                .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
+            .filter(Game_model.puuid == puuid, Game_model.queue_id == queue)
+            .join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
+            .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
+            .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
 
         # 데이터 가공
         for i, game in enumerate(game_info):
@@ -147,6 +142,7 @@ class AllGame(Resource):
                         queue_id=game['info']['queueId'],
                         puuid=puuid,
                         game_duration=game['info']['gameDuration'],
+                        team_win=100 if game['info']['teams'][0]['win'] else 200,
                         played_time=played_time
                     ))
 
