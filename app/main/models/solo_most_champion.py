@@ -33,6 +33,7 @@ class SoloMostChampion(db.Model):
     @property
     def serialize(self):
         return {
+            'solo_most_id': self.solo_most_id,
             'summoner_id': self.summoner_id,
             'champion_id': self.champion_id,
             'total_kill': self.total_kill,

@@ -33,6 +33,7 @@ class FlexMostChampion(db.Model):
     @property
     def serialize(self):
         return {
+            'flex_most_id': self.flex_most_id,
             'summoner_id': self.summoner_id,
             'champion_id': self.champion_id,
             'total_kill': self.total_kill,
