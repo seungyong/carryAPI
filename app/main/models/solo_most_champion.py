@@ -8,7 +8,8 @@ class SoloMostChampion(db.Model):
     __table_name__ = 'solo_most_champion'
     __table_args__ = {'mysql_collate': 'utf8_general_ci'}
 
-    summoner_id = Column(VARCHAR(100), ForeignKey('player.summoner_id'), primary_key=True)
+    solo_most_id = Column(INTEGER(unsigned=True), primary_key=True, auto_increment=True)
+    summoner_id = Column(VARCHAR(100), ForeignKey('player.summoner_id'))
     champion_id = Column(SMALLINT, nullable=False)
     total_kill = Column(INTEGER, nullable=False)
     total_death = Column(INTEGER, nullable=False)
