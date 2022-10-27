@@ -1,3 +1,4 @@
+import random
 from json import loads
 from urllib import request as url_request
 from urllib.error import HTTPError
@@ -6,10 +7,13 @@ from app import session
 
 from ..controller.champion_skill import ChampionSkillController
 from ..models.champion import Champion as ChampionModel
+from ..models.champion_basic import ChampionBasic
+
 from ..util.single_ton import Singleton
 from ..util.version import get_version
 from ..util.riot_url import champions_url
 from ..util.constants import *
+
 from ..exception.data_not_found import DataNotFound
 from ..exception.forbidden import Forbidden
 
@@ -44,7 +48,6 @@ class ChampionController(metaclass=Singleton):
                 eng_name=info['id'],
                 sub_name=info['title'],
                 description=info['blurb'],
-                position='TOP',
                 tags=', '.join(info['tags']),
                 difficulty=info['info']['difficulty'],
                 hp=info['stats']['hp'],
@@ -59,16 +62,8 @@ class ChampionController(metaclass=Singleton):
                 attack_damage_per_level=info['stats']['attackdamageperlevel'],
                 attack_speed=info['stats']['attackspeed'],
                 attack_speed_per_level=info['stats']['attackspeedperlevel'],
-                score=12.5,
-                current_tier=1,
-                prev_tier=5,
                 ad_damage_percent=90,
                 ap_damage_percent=10,
-                total_ban=10,
-                total_pick=10,
-                total_win=5,
-                total_lose=5,
-                total_match=10
             ))
 
         db_champions = [x.serialize for x in session.query(ChampionModel).all()]
@@ -104,6 +99,7 @@ class ChampionController(metaclass=Singleton):
 
     @staticmethod
     def get_all_champion_name():
+        # with_entities를 사용하면 튜플형태로 값이 넘어옴
         champions_name = [dict(x) for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id,
                                                                                       ChampionModel.kor_name,
                                                                                       ChampionModel.eng_name)]
@@ -112,3 +108,32 @@ class ChampionController(metaclass=Singleton):
             return champions_name
         else:
             raise DataNotFound('Not Found Champion')
+
+    @staticmethod
+    def champion_basic_analysis():
+        positions = ['TOP', 'JUNGLE', 'MID', 'AD', 'SUPPORT']
+        tier = [1, 2, 3, 4, 5]
+        champions = [x['champion_id'] for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id)]
+        analyzed_champions = []
+
+        if champions:
+            for champion_id in champions:
+                analyzed_champions.append(ChampionBasic(
+                    champion_id=champion_id,
+                    position=random.choice(positions),
+                    score=12.5,
+                    current_tier=random.choice(tier),
+                    prev_tier=5,
+                    total_pick=100,
+                    total_ban=50,
+                    total_win=50,
+                    total_lose=50,
+                    total_match=100
+                ))
+
+            session.add_all(analyzed_champions)
+            session.commit()
+        else:
+            raise DataNotFound('Not Found Champion Data.')
+
+        return CREATED

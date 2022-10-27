@@ -33,7 +33,7 @@ class AllChampion(Resource):
     @champion_ns.response(201, 'Created')
     @champion_ns.response(403, 'Forbidden', response_forbidden_model)
     def post():
-        """Insert Champions data that doesn't exist. (Admin API)"""
+        """(Admin API) Insert Champions data that doesn't exist."""
         try:
             champion_controller = ChampionController()
             code = champion_controller.insert_champion()
@@ -69,3 +69,22 @@ class ChampionName(Resource):
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
+
+
+@champion_ns.route('/analysis/basic')
+class ChampionAnalysis(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the basic of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_basic_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
+            print(e)
