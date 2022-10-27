@@ -24,10 +24,9 @@ class ChampionEasier(db.Model):
     sample_match = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, easier_id, champion_id, to_champion_id, win, lose, line_kills, line_deaths, champion_kills,
+            self, champion_id, to_champion_id, win, lose, line_kills, line_deaths, champion_kills,
             champion_deaths, champion_assists, total_first_tower, team_kills, team_assists, sample_match
     ):
-        self.easier_id = easier_id
         self.champion_id = champion_id
         self.to_champion_id = to_champion_id
         self.win = win

@@ -18,9 +18,8 @@ class ChampionItemBuild(db.Model):
     sample_match = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, item_build_id, champion_id, item0_id, item1_id, item2_id, total_win, total_lose, sample_match
+            self, champion_id, item0_id, item1_id, item2_id, total_win, total_lose, sample_match
     ):
-        self.item_build_id = item_build_id
         self.champion_id = champion_id
         self.item0_id = item0_id
         self.item1_id = item1_id

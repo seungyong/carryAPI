@@ -15,9 +15,8 @@ class ChampionSkillBuild(db.Model):
     total_lose = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, shoes_build_id, champion_id, build, total_win, total_lose
+            self, champion_id, build, total_win, total_lose
     ):
-        self.shoes_build_id = shoes_build_id
         self.champion_id = champion_id
         self.build = build
         self.total_win = total_win
@@ -26,7 +25,7 @@ class ChampionSkillBuild(db.Model):
     @property
     def serialize(self):
         return {
-            'shoes_build_id': self.shoes_build_id,
+            'skill_build_id': self.skill_build_id,
             'champion_id': self.champion_id,
             'build': self.build,
             'total_win': self.total_win,
