@@ -2,12 +2,13 @@ import random
 from json import loads
 from urllib import request as url_request
 from urllib.error import HTTPError
+from collections import defaultdict
 
 from app import session
 
 from ..controller.champion_skill import ChampionSkillController
 from ..models.champion import Champion as ChampionModel
-from ..models.champion_basic import ChampionBasic
+from ..models.champion_basic import ChampionBasic as ChampionBasicModel
 
 from ..util.single_ton import Singleton
 from ..util.version import get_version
@@ -19,6 +20,27 @@ from ..exception.forbidden import Forbidden
 
 
 class ChampionController(metaclass=Singleton):
+    @staticmethod
+    def get_all_champion_name():
+        # with_entities를 사용하면 튜플형태로 값이 넘어옴
+        champions_name = [dict(x) for x in session.query(ChampionModel).join(ChampionBasicModel,
+                                                                             ChampionModel.champion_id == ChampionBasicModel.champion_id).with_entities(
+            ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name, ChampionBasicModel.position)]
+        result = defaultdict()
+
+        for champion in champions_name:
+            if champion['position'] in result:
+                result[champion['position']].append(champion)
+            else:
+                result[champion['position']] = list()
+                result[champion['position']].append(champion)
+
+        if result:
+            return result
+        else:
+            raise DataNotFound('Not Found Champion')
+
+    # Admin API
     @staticmethod
     def insert_champion():
         """Insert Champions data that doesn't exist."""
@@ -96,18 +118,6 @@ class ChampionController(metaclass=Singleton):
                 raise DataNotFound('Failed to get champion skills data from riot api.')
         else:
             return CREATED
-
-    @staticmethod
-    def get_all_champion_name():
-        # with_entities를 사용하면 튜플형태로 값이 넘어옴
-        champions_name = [dict(x) for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id,
-                                                                                      ChampionModel.kor_name,
-                                                                                      ChampionModel.eng_name)]
-
-        if champions_name:
-            return champions_name
-        else:
-            raise DataNotFound('Not Found Champion')
 
     @staticmethod
     def champion_basic_analysis():
