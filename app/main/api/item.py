@@ -6,9 +6,15 @@ from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 
 from app import session
-from ..models.item import Item as Item_model
+from ..models.item import Item as Item_model # 그대로 써도 될듯.
+from ..controller.item import ItemController
 
 from ..util import response, riot_url, version as version_util
+
+from ..util import constants
+from ..exception.data_not_found import DataNotFound
+from ..exception.forbidden import Forbidden
+from ..exception.internal_server_error import InternalServerError
 
 item_bp = Blueprint('item_bp', __name__)
 item_ns = Namespace(
@@ -17,101 +23,55 @@ item_ns = Namespace(
     path='/items'
 )
 
-response_no_data_model = item_ns.model('Item No Data', {
-    'statusCode': fields.Integer(404)
-})
+response_no_data_model = item_ns.model('Not Found Item Data', DataNotFound.response_model())
+response_forbidden_model = item_ns.model("Can't access URL or not found URL", Forbidden.response_model())
+response_internal_server_error_model = item_ns.model('Server Error', InternalServerError.response_model())
 
 
 @item_ns.route('/')
-@item_ns.response(500, 'Internal Server Error')
+@item_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
 class AllItem(Resource):
+    @staticmethod
     @item_ns.response(200, 'Success')
-    @item_ns.response(404, 'No Data', response_no_data_model)
-    def get(self):
+    @item_ns.response(404, 'No Found Data', response_no_data_model)
+    @item_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
+    def get():
         """Get All item data."""
         try:
-            items = [x.serialize for x in session.query(Item_model).all()]
-            res = response.response_data(items)
+            item_controller = ItemController
+            result = item_controller.get_all_item()
 
-            return res, res['statusCode']
-        except:
+            return result, constants.OK
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
             session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
 
-    @item_ns.response(204, 'Insert items success')
+
+    @staticmethod
+    @item_ns.response(201, 'Created')
+    @item_ns.response(403, 'Forbidden', response_forbidden_model)
     def post(self):
         """Insert data for items that do not exist."""
         try:
-            version = version_util.get_version()
-            url = riot_url.item_url(version)
+            item_controller = ItemController()
+            code = item_controller.insert_item()
 
-            with request.urlopen(url) as res:
-                data = loads(res.read().decode())
-
-            # No data items
-            if 'data' not in data:
-                return {
-                    'statusCode': 503
-                }
-
-            items_with_api = []
-            cleaner = compile('<(?!br|/br).+?>')
-
-            for key, item in data['data'].items():
-                description = sub(cleaner, '', item['description'])
-
-                if not item['gold']['purchasable']:
-                    continue
-                elif 'into' in item or item['gold']['total'] < 1500:
-                    items_with_api.append(Item_model(
-                        item_id=key,
-                        name=item['name'],
-                        description=description,
-                        plain_text=item['plaintext'],
-                        price=item['gold']['total'],
-                        sell=item['gold']['sell'],
-                        tags=','.join(item['tags']),
-                        item_grade=0
-                    ))
-                else:
-                    items_with_api.append(Item_model(
-                        item_id=key,
-                        name=item['name'],
-                        description=description,
-                        plain_text=item['plaintext'],
-                        price=item['gold']['total'],
-                        sell=item['gold']['sell'],
-                        tags=','.join(item['tags']),
-                        item_grade=2 if 'rarityMythic' in item['description'] else 1
-                    ))
-
-            items_with_db = [x.serialize for x in session.query(Item_model).all()]
-
-            set1 = set([int(x.item_id) for x in items_with_api])
-            set2 = set([int(x['item_id']) for x in items_with_db])
-
-            not_items = list(set1 - set2)
-            items = []
-
-            if not_items:
-                for item_id in not_items:
-                    idx = next((
-                        index for (index, item) in enumerate(items_with_api)
-                        if int(item.item_id) == int(item_id)
-                    ), None)
-
-                    items.append(items_with_api[idx])
-
-                session.add_all(items)
-                session.commit()
-
-            status_code = 204
-        except:
+            if code == constants.CREATED:
+                return '', constants.CREATED
+        except DataNotFound as e :
+            return e.__dict__, e.code
+        except Forbidden as e:
+            return e.__dict__, e.code
+        except Exception:
             session.rollback()
-            status_code = 500
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
 
-        return '', status_code
 
-    @item_ns.response(204, 'Insert items after Delete items')
+    @staticmethod
     def put(self):
         """After deleting the item data, insert the item data."""
         try:
@@ -130,7 +90,7 @@ class AllItem(Resource):
             print(e)
             session.rollback()
 
-    @item_ns.response(204, 'Delete items success')
+    @staticmethod
     def delete(self):
         """Delete items data"""
         try:

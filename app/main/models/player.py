@@ -17,10 +17,10 @@ class Player(db.Model):
     profile_icon_id = Column(SMALLINT, nullable=False)
     summoner_name = Column(VARCHAR(30), unique=True, nullable=False)
     level = Column(SMALLINT, nullable=False)
-    solo_tier = Column(VARCHAR(10), nullable=False)
+    solo_tier = Column(VARCHAR(10), nullable=False, default='Unranked')
     solo_rank = Column(TINYINT, nullable=False, default=5)
     solo_point = Column(TINYINT, nullable=False, default=0)
-    flex_tier = Column(VARCHAR(10), nullable=False)
+    flex_tier = Column(VARCHAR(10), nullable=False, default='Unranked')
     flex_rank = Column(TINYINT, nullable=False, default=5)
     flex_point = Column(TINYINT, nullable=False, default=0)
     total_win = Column(INTEGER, default=0)
@@ -29,8 +29,8 @@ class Player(db.Model):
 
     def __init__(
             self, summoner_id='', puuid='', profile_icon_id=0, summoner_name='', level=0,
-            solo_tier='', solo_rank='', solo_point=0, flex_tier='', flex_rank='', flex_point=0,
-            total_win=0, total_lose=0
+            solo_tier='Unranked', solo_rank=5, solo_point=0, flex_tier='Unranked', flex_rank=5, flex_point=0,
+            total_win=0, total_lose=0, created_time = func.now()
     ):
         self.summoner_id = summoner_id
         self.puuid = puuid
@@ -45,6 +45,7 @@ class Player(db.Model):
         self.flex_point = flex_point
         self.total_win = total_win
         self.total_lose = total_lose
+        self.created_time = created_time
 
     @property
     def serialize(self):
