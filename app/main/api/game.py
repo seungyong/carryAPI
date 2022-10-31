@@ -14,6 +14,12 @@ from ..models.game_team_info import GameTeamInfo as Game_team_info_model
 
 from ..util import response, riot_url
 
+from ..controller.game import GameController
+from ..util import constants
+from ..exception.data_not_found import DataNotFound
+from ..exception.forbidden import Forbidden
+from ..exception.internal_server_error import InternalServerError
+
 game_bp = Blueprint('game_bp', __name__)
 game_ns = Namespace(
     'Game',
@@ -99,139 +105,24 @@ class AllGame(Resource):
     @game_ns.response(204, 'No Data')
     def post(self, puuid):
         """Insert User Game History"""
-        current_timestamp = datetime.today() - timedelta(days=90)
-        page = flask_request.args.get('page', default=0, type=int)
-        count = flask_request.args.get('count', default=20, type=int)
-        queue = flask_request.args.get('queue', default=None, type=int)
-        url = riot_url.matches_url(puuid, (page * count), count, queue)
-        headers = {
-            getenv('RIOT_HEADER_KEY'): getenv('RIOT_API_KEY')
-        }
-        req = urllib_request.Request(url, None, headers)
-
-        with urllib_request.urlopen(req) as res:
-            match_data = loads(res.read().decode())
-
-        games = []
-        game_players = []
-        game_team_info = []
-
-        for game_id in match_data:
-            duplicated_game = [x.serialize for x in session.query(Game_model).filter_by(game_id=game_id)]
-
-            if duplicated_game:
-                continue
-
-            url = riot_url.matches_info_url(game_id)
-            req = urllib_request.Request(url, None, headers)
-
-            try:
-                with urllib_request.urlopen(req) as res:
-                    game = loads(res.read().decode())
-
-                    # 밀리초 제거
-                    game_end_timestamp = str(game['info']['gameEndTimestamp'])[:-3]
-                    played_time = datetime.fromtimestamp(int(game_end_timestamp))
-
-                    # 게임 전적이 3달전이라면
-                    if not played_time > current_timestamp:
-                        break
-
-                    games.append(Game_model(
-                        game_id=game_id,
-                        queue_id=game['info']['queueId'],
-                        puuid=puuid,
-                        game_duration=game['info']['gameDuration'],
-                        team_win=100 if game['info']['teams'][0]['win'] else 200,
-                        played_time=played_time
-                    ))
-
-                    blue_total_gold = 0
-                    red_total_gold = 0
-
-                    for game_info in game['info']['participants']:
-                        if game_info['pentaKills'] > 0:
-                            kill_type = '펜타킬'
-                        elif game_info['quadraKills'] > 0:
-                            kill_type = '쿼드라킬'
-                        elif game_info['tripleKills'] > 0:
-                            kill_type = '트리플킬'
-                        elif game_info['doubleKills'] > 0:
-                            kill_type = '더블킬'
-                        else:
-                            kill_type = ''
-
-                        if game_info['teamId'] == 100:
-                            blue_total_gold += int(game_info['goldEarned'])
-                        else:
-                            red_total_gold += int(game_info['goldEarned'])
-
-                        if 'challenges' in game_info:
-                            kda = game_info['challenges']['kda']
-                        else:
-                            # -1은 Perfect 게임
-                            # URF 같은 특수모드는 kda를 주지 않음 (0으로 나눌 시 ZeroDivision Error 발생)
-                            if game_info['deaths'] == 0:
-                                kda = -1
-                            else:
-                                kda = (game_info['kills'] + game_info['assists']) / game_info['deaths']
-
-                        game_players.append(Game_player_model(
-                            game_id=game_id,
-                            team_id=game_info['teamId'],
-                            puuid=puuid,
-                            summoner_id=game_info['summonerId'],
-                            summoner_name=game_info['summonerName'],
-                            champion_id=game_info['championId'],
-                            champion_level=game_info['champLevel'],
-                            item0_id=game_info['item0'],
-                            item1_id=game_info['item1'],
-                            item2_id=game_info['item2'],
-                            item3_id=game_info['item3'],
-                            item4_id=game_info['item4'],
-                            item5_id=game_info['item5'],
-                            item6_id=game_info['item6'],
-                            team_position=game_info['teamPosition'],
-                            kda=kda,
-                            first_blood=game_info['firstBloodKill'],
-                            kills=game_info['kills'],
-                            deaths=game_info['deaths'],
-                            assists=game_info['assists'],
-                            max_kill_type=kill_type,
-                            total_damage_to_champions=game_info['totalDamageDealtToChampions'],
-                            cs=int(game_info['totalMinionsKilled']) + int(game_info['neutralMinionsKilled']),
-                            gold_earned=game_info['goldEarned'],
-                            vision_score=game_info['visionScore'],
-                            summoner1_id=game_info['summoner1Id'],
-                            summoner2_id=game_info['summoner2Id'],
-                        ))
-
-                    team_win = (100 if game['info']['teams'][0]['win'] else 200)
-
-                    game_team_info.append(Game_team_info_model(
-                        game_id=game_id,
-                        team_win=team_win,
-                        blue_baron_kills=game['info']['teams'][0]['objectives']['baron']['kills'],
-                        blue_dragon_kills=game['info']['teams'][0]['objectives']['dragon']['kills'],
-                        blue_tower_kills=game['info']['teams'][0]['objectives']['tower']['kills'],
-                        blue_champion_kills=game['info']['teams'][0]['objectives']['champion']['kills'],
-                        blue_total_gold=blue_total_gold,
-                        red_baron_kills=game['info']['teams'][1]['objectives']['baron']['kills'],
-                        red_dragon_kills=game['info']['teams'][1]['objectives']['dragon']['kills'],
-                        red_tower_kills=game['info']['teams'][1]['objectives']['tower']['kills'],
-                        red_champion_kills=game['info']['teams'][1]['objectives']['champion']['kills'],
-                        red_total_gold=red_total_gold,
-                    ))
-            except urllib_request.error.HTTPError as error:
-                if error.status == 429:
-                    return 'Too Many Request', 429
-
-        session.add_all(games)
-        session.add_all(game_players)
-        session.add_all(game_team_info)
-        session.commit()
-
-        return '', 204
+        try:
+            current_timestamp = datetime.today() - timedelta(days=90)
+            page = flask_request.args.get('page', default=0, type=int)
+            count = flask_request.args.get('count', default=20, type=int)
+            queue = flask_request.args.get('queue', default=None, type=int)
+            game_controller = GameController()
+            code = game_controller.insert_game(puuid, page, count, queue, current_timestamp)
+            print("잇힝")
+            if code == constants.CREATED:
+                return '', constants.CREATED
+        except DataNotFound as e :
+            return e.__dict__, e.code
+        except Forbidden as e:
+            return e.__dict__, e.code
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
 
     def delete(self):
         """Delete game history within 3 Month."""
