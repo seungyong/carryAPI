@@ -118,14 +118,14 @@ class ChampionAnalysisBasic(Resource):
             print('Error : ', e)
 
 
-@champion_ns.route('/analysis/counter')
-class ChampionAnalysisCounter(Resource):
+@champion_ns.route('/analysis/counter/weak')
+class ChampionAnalysisCounterWeak(Resource):
     @staticmethod
     def post():
         """(Admin API) Analyze the counter of the champion."""
         try:
             champion_controller = ChampionController()
-            code = champion_controller.champion_counter_analysis()
+            code = champion_controller.champion_counter_weak_analysis()
 
             if code == constants.CREATED:
                 return '', constants.CREATED

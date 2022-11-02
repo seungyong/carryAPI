@@ -9,7 +9,7 @@ from app import session
 from ..controller.champion_skill import ChampionSkillController
 from ..models.champion import Champion as ChampionModel
 from ..models.champion_basic import ChampionBasic as ChampionBasicModel
-from ..models.champion_counter import ChampionCounter as ChampionCounterModel
+from ..models.counter_weak_against import CounterWeakAgainst as CounterWeakAgainstModel
 
 from ..util.single_ton import Singleton
 from ..util.version import get_version
@@ -43,11 +43,11 @@ class ChampionController(metaclass=Singleton):
                 db_results[position][idx].append([
                     dict(x) for x in
                     session
-                    .query(ChampionModel, ChampionCounterModel)
-                    .join(ChampionModel, ChampionModel.champion_id == ChampionCounterModel.to_champion_id)
-                    .filter(ChampionCounterModel.champion_id == db_results[position][idx][0]['champion_id'])
-                    .with_entities(ChampionModel.eng_name, ChampionCounterModel.to_champion_id, ChampionCounterModel.score)
-                    .order_by(ChampionCounterModel.score.desc())
+                    .query(ChampionModel, CounterWeakAgainstModel)
+                    .join(ChampionModel, ChampionModel.champion_id == CounterWeakAgainstModel.to_champion_id)
+                    .filter(CounterWeakAgainstModel.champion_id == db_results[position][idx][0]['champion_id'])
+                    .with_entities(ChampionModel.eng_name, CounterWeakAgainstModel.to_champion_id, CounterWeakAgainstModel.score)
+                    .order_by(CounterWeakAgainstModel.score.desc())
                     .limit(5)
                 ])
 
@@ -195,7 +195,7 @@ class ChampionController(metaclass=Singleton):
         return CREATED
 
     @staticmethod
-    def champion_counter_analysis():
+    def champion_counter_weak_analysis():
         champions = [x['champion_id'] for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id)]
         analyzed_champions = []
 
@@ -213,7 +213,7 @@ class ChampionController(metaclass=Singleton):
                     line_kills = random.randrange(100, 10000)
                     line_deaths = random.randrange(100, 10000)
 
-                    analyzed_champions.append(ChampionCounterModel(
+                    analyzed_champions.append(CounterWeakAgainstModel(
                         champion_id=subject,
                         to_champion_id=target,
                         score=score,
