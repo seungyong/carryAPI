@@ -53,7 +53,7 @@ class AllItem(Resource):
     @staticmethod
     @item_ns.response(201, 'Created')
     @item_ns.response(403, 'Forbidden', response_forbidden_model)
-    def post(self):
+    def post():
         """Insert data for items that do not exist."""
         try:
             item_controller = ItemController()
@@ -61,7 +61,7 @@ class AllItem(Resource):
 
             if code == constants.CREATED:
                 return '', constants.CREATED
-        except DataNotFound as e :
+        except DataNotFound as e:
             return e.__dict__, e.code
         except Forbidden as e:
             return e.__dict__, e.code

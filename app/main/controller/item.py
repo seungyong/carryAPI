@@ -1,6 +1,5 @@
 from json import loads
 from urllib import request as url_request, parse
-from urllib.error import HTTPError
 
 from app import session
 
@@ -13,7 +12,6 @@ from re import compile, sub
 
 from ..util.constants import *
 from ..exception.data_not_found import DataNotFound
-from ..exception.forbidden import Forbidden
 
 class ItemController(metaclass=Singleton):
     @staticmethod
@@ -82,7 +80,7 @@ class ItemController(metaclass=Singleton):
                 session.add_all(items)
                 session.commit()
 
-            status_code = 204
+            status_code = CREATED
         except:
             session.rollback()
             status_code = 500
@@ -92,7 +90,7 @@ class ItemController(metaclass=Singleton):
     @staticmethod
     def get_all_item():
         items = [ x.serialize for x in session.query(ItemModel).all()]
-        res = response.response_data(items)
+        #res = response.response_data(items)
         if items:
             return items
         else:

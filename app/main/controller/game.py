@@ -140,7 +140,7 @@ class GameController(metaclass=Singleton):
                                 assists=game_info['assists'],
                                 max_kill_type=kill_type,
                                 total_damage_to_champions=game_info['totalDamageDealtToChampions'],
-                                cs=int(game_info['totalMinionsKilled']) + int(game_info['neutralMinionsKilled']),
+                                cs= game_info['totalMinionsKilled'] + game_info['neutralMinionsKilled'],
                                 gold_earned=game_info['goldEarned'],
                                 vision_score=game_info['visionScore'],
                                 wards_placed = 100, #Dummy Data
@@ -185,6 +185,7 @@ class GameController(metaclass=Singleton):
             print('check2')
             status_code = CREATED
         except Exception as e:
+            print(e)
             session.rollback()
             status_code = 500
 
