@@ -9,6 +9,7 @@ from app import session
 from ..controller.champion_skill import ChampionSkillController
 from ..models.champion import Champion as ChampionModel
 from ..models.champion_basic import ChampionBasic as ChampionBasicModel
+from ..models.champion_counter import ChampionCounter as ChampionCounterModel
 
 from ..util.single_ton import Singleton
 from ..util.version import get_version
@@ -21,19 +22,64 @@ from ..exception.forbidden import Forbidden
 
 class ChampionController(metaclass=Singleton):
     @staticmethod
+    def get_ranking(count):
+        api_results = defaultdict()
+        db_results = defaultdict()
+
+        for position in POSITIONS:
+            # ranking champion count 개씩 가져오기
+            db_results[position] = [
+                list([x[0].serialize, x[1].serialize]) for x in
+                session
+                .query(ChampionModel, ChampionBasicModel)
+                .join(ChampionBasicModel, ChampionModel.champion_id == ChampionBasicModel.champion_id)
+                .filter(ChampionModel.position == position)
+                .order_by(ChampionBasicModel.score.desc()).limit(count)
+            ]
+            api_results[position] = list()
+
+            for idx in range(len(db_results[position])):
+                # counter champion 넣기
+                db_results[position][idx].append([
+                    dict(x) for x in
+                    session
+                    .query(ChampionModel, ChampionCounterModel)
+                    .join(ChampionModel, ChampionModel.champion_id == ChampionCounterModel.to_champion_id)
+                    .filter(ChampionCounterModel.champion_id == db_results[position][idx][0]['champion_id'])
+                    .with_entities(ChampionModel.eng_name, ChampionCounterModel.to_champion_id, ChampionCounterModel.score)
+                    .order_by(ChampionCounterModel.score.desc())
+                    .limit(5)
+                ])
+
+                # response 반환 값 맞추기
+                api_results[position].append(
+                    ChampionModel.to_response_ranking(
+                        db_results[position][idx][0], db_results[position][idx][1], db_results[position][idx][2]
+                    )
+                )
+
+        is_empty = not bool([item for item in api_results.values() if item != []])
+
+        if is_empty:
+            raise DataNotFound('Not found ranking champions.')
+
+        return api_results
+
+    @staticmethod
     def get_all_champion_name():
-        # with_entities를 사용하면 튜플형태로 값이 넘어옴
-        champions_name = [dict(x) for x in session.query(ChampionModel).join(ChampionBasicModel,
-                                                                             ChampionModel.champion_id == ChampionBasicModel.champion_id).with_entities(
-            ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name, ChampionBasicModel.position)]
+        # with_entities 사용하면 튜플형태로 값이 넘어옴
+        champions_name = [dict(x) for x in
+                          session.query(ChampionModel).with_entities(ChampionModel.champion_id, ChampionModel.kor_name,
+                                                                     ChampionModel.eng_name,
+                                                                     ChampionModel.position)]
         result = defaultdict()
 
         for champion in champions_name:
             if champion['position'] in result:
-                result[champion['position']].append(champion)
+                result[champion['position']].append(ChampionModel.to_response_name(champion))
             else:
                 result[champion['position']] = list()
-                result[champion['position']].append(champion)
+                result[champion['position']].append(ChampionModel.to_response_name(champion))
 
         if result:
             return result
@@ -70,6 +116,7 @@ class ChampionController(metaclass=Singleton):
                 eng_name=info['id'],
                 sub_name=info['title'],
                 description=info['blurb'],
+                position=random.choice(POSITIONS),
                 tags=', '.join(info['tags']),
                 difficulty=info['info']['difficulty'],
                 hp=info['stats']['hp'],
@@ -83,9 +130,7 @@ class ChampionController(metaclass=Singleton):
                 attack_damage=info['stats']['attackdamage'],
                 attack_damage_per_level=info['stats']['attackdamageperlevel'],
                 attack_speed=info['stats']['attackspeed'],
-                attack_speed_per_level=info['stats']['attackspeedperlevel'],
-                ad_damage_percent=90,
-                ap_damage_percent=10,
+                attack_speed_per_level=info['stats']['attackspeedperlevel']
             ))
 
         db_champions = [x.serialize for x in session.query(ChampionModel).all()]
@@ -121,25 +166,69 @@ class ChampionController(metaclass=Singleton):
 
     @staticmethod
     def champion_basic_analysis():
-        positions = ['TOP', 'JUNGLE', 'MID', 'AD', 'SUPPORT']
+        # 여기서 chmapion table position 수정
         tier = [1, 2, 3, 4, 5]
         champions = [x['champion_id'] for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id)]
         analyzed_champions = []
 
         if champions:
             for champion_id in champions:
-                analyzed_champions.append(ChampionBasic(
+                analyzed_champions.append(ChampionBasicModel(
                     champion_id=champion_id,
-                    position=random.choice(positions),
-                    score=12.5,
+                    score=round(random.uniform(1, 99.9), 1),
                     current_tier=random.choice(tier),
                     prev_tier=5,
                     total_pick=100,
                     total_ban=50,
                     total_win=50,
                     total_lose=50,
-                    total_match=100
+                    total_match=100,
+                    ad_damage_percent=90,
+                    ap_damage_percent=10
                 ))
+
+            session.add_all(analyzed_champions)
+            session.commit()
+        else:
+            raise DataNotFound('Not Found Champion Data.')
+
+        return CREATED
+
+    @staticmethod
+    def champion_counter_analysis():
+        champions = [x['champion_id'] for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id)]
+        analyzed_champions = []
+
+        # x => y로 지정했으면 반대로 y => x를 지정해줘야함.
+        # list not in으로 비교하면서 사용.
+        if champions:
+            for subject in champions:
+                for target in champions:
+                    if subject == target:
+                        continue
+
+                    score = round(random.uniform(1, 99.9), 1)
+                    win = random.randrange(1000, 100000)
+                    lose = random.randrange(1000, 100000)
+                    line_kills = random.randrange(100, 10000)
+                    line_deaths = random.randrange(100, 10000)
+
+                    analyzed_champions.append(ChampionCounterModel(
+                        champion_id=subject,
+                        to_champion_id=target,
+                        score=score,
+                        win=win,
+                        lose=lose,
+                        line_kills=line_kills,
+                        line_deaths=line_deaths,
+                        champion_kills=random.randrange(line_kills, 10000),
+                        champion_deaths=random.randrange(line_deaths, 10000),
+                        champion_assists=random.randrange(100, 10000),
+                        total_first_tower='20:05',
+                        team_kills=random.randrange(10000, 1000000),
+                        team_assists=random.randrange(10000, 1000000),
+                        sample_match=win + lose
+                    ))
 
             session.add_all(analyzed_champions)
             session.commit()

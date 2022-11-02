@@ -1,5 +1,6 @@
-from flask import Blueprint
+from flask import Blueprint, request as flask_request
 from flask_restx import Namespace, Resource, fields
+
 from app import session
 
 from ..controller.champion import ChampionController
@@ -44,7 +45,36 @@ class AllChampion(Resource):
             return e.__dict__, e.code
         except Forbidden as e:
             return e.__dict__, e.code
-        except Exception:
+        except Exception as e:
+            print(e)
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/ranking')
+@champion_ns.doc(
+    params={
+        'count': {'description': 'Get Ranking champion count', 'default': 5, 'type': 'int'}
+    }
+)
+@champion_ns.response(200, 'Success')
+@champion_ns.response(404, 'No Found Data', response_no_data_model)
+@champion_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
+class ChampionRanking(Resource):
+    @staticmethod
+    def get():
+        try:
+            count = flask_request.args.get(key='count', default=5, type=int)
+
+            champion_controller = ChampionController()
+            result = champion_controller.get_ranking(count)
+
+            return result, constants.OK
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
+            print(e)
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
@@ -72,7 +102,7 @@ class ChampionName(Resource):
 
 
 @champion_ns.route('/analysis/basic')
-class ChampionAnalysis(Resource):
+class ChampionAnalysisBasic(Resource):
     @staticmethod
     def post():
         """(Admin API) Analyze the basic of the champion."""
@@ -87,4 +117,24 @@ class ChampionAnalysis(Resource):
         except DataNotFound as e:
             return e.__dict__, e.code
         except Exception as e:
+            print('Error : ', e)
+
+
+@champion_ns.route('/analysis/counter')
+class ChampionAnalysisCounter(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the counter of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_counter_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
+            session.rollback()
             print(e)
