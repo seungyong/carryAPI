@@ -45,8 +45,7 @@ class AllChampion(Resource):
             return e.__dict__, e.code
         except Forbidden as e:
             return e.__dict__, e.code
-        except Exception as e:
-            print(e)
+        except Exception:
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
@@ -73,8 +72,7 @@ class ChampionRanking(Resource):
             return result, constants.OK
         except DataNotFound as e:
             return e.__dict__, e.code
-        except Exception as e:
-            print(e)
+        except Exception:
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
