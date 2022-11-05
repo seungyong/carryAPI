@@ -5,7 +5,7 @@ from sqlalchemy.dialects.mysql import SMALLINT, INTEGER, VARCHAR, DECIMAL
 
 
 class CounterWeakAgainst(db.Model):
-    __table_name__ = 'counter_strong_against'
+    __table_name__ = 'counter_weak_against'
     __table_args__ = {'mysql_collate': 'utf8_general_ci'}
 
     counter_id = Column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)

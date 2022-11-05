@@ -114,15 +114,17 @@ class ChampionAnalysisBasic(Resource):
                 raise Exception('Wrong code')
         except DataNotFound as e:
             return e.__dict__, e.code
-        except Exception as e:
-            print('Error : ', e)
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
 
 
 @champion_ns.route('/analysis/counter/weak')
 class ChampionAnalysisCounterWeak(Resource):
     @staticmethod
     def post():
-        """(Admin API) Analyze the counter of the champion."""
+        """(Admin API) Analyze the counter weak against of the champion."""
         try:
             champion_controller = ChampionController()
             code = champion_controller.champion_counter_weak_analysis()
@@ -133,6 +135,29 @@ class ChampionAnalysisCounterWeak(Resource):
                 raise Exception('Wrong code')
         except DataNotFound as e:
             return e.__dict__, e.code
-        except Exception as e:
+        except Exception:
             session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/analysis/counter/strong')
+class ChampionAnalysisCounterStrong(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the counter strong against of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_counter_strong_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
             print(e)
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code

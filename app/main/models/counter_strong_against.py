@@ -10,7 +10,7 @@ class CounterStrongAgainst(db.Model):
 
     counter_id = Column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
     champion_id = Column(SMALLINT, ForeignKey('champion.champion_id'), nullable=False)
-    to_champion_id = Column(SMALLINT, unique=True, nullable=False)
+    to_champion_id = Column(SMALLINT, nullable=False)
     score = Column(DECIMAL(3, 1), nullable=False)
     win = Column(INTEGER, nullable=False)
     lose = Column(INTEGER, nullable=False)
@@ -20,8 +20,8 @@ class CounterStrongAgainst(db.Model):
     champion_deaths = Column(INTEGER, nullable=False)
     champion_assists = Column(INTEGER, nullable=False)
     total_first_tower = Column(VARCHAR(10), nullable=False)
-    team_kills = Column(SMALLINT, nullable=False)
-    team_assists = Column(SMALLINT, nullable=False)
+    team_kills = Column(INTEGER, nullable=False)
+    team_assists = Column(INTEGER, nullable=False)
     sample_match = Column(INTEGER, nullable=False)
 
     def __init__(
@@ -48,7 +48,7 @@ class CounterStrongAgainst(db.Model):
         return {
             'champion_id': self.champion_id,
             'to_champion_id': self.to_champion_id,
-            'score': self.score,
+            'score': float(self.score),
             'win': self.win,
             'lose': self.lose,
             'line_kills': self.line_kills,

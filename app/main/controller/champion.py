@@ -10,6 +10,7 @@ from ..controller.champion_skill import ChampionSkillController
 from ..models.champion import Champion as ChampionModel
 from ..models.champion_basic import ChampionBasic as ChampionBasicModel
 from ..models.counter_weak_against import CounterWeakAgainst as CounterWeakAgainstModel
+from ..models.counter_strong_against import CounterStrongAgainst as CounterStrongAgainstModel
 
 from ..util.single_ton import Singleton
 from ..util.version import get_version
@@ -214,6 +215,49 @@ class ChampionController(metaclass=Singleton):
                     line_deaths = random.randrange(100, 10000)
 
                     analyzed_champions.append(CounterWeakAgainstModel(
+                        champion_id=subject,
+                        to_champion_id=target,
+                        score=score,
+                        win=win,
+                        lose=lose,
+                        line_kills=line_kills,
+                        line_deaths=line_deaths,
+                        champion_kills=random.randrange(line_kills, 10000),
+                        champion_deaths=random.randrange(line_deaths, 10000),
+                        champion_assists=random.randrange(100, 10000),
+                        total_first_tower='20:05',
+                        team_kills=random.randrange(10000, 1000000),
+                        team_assists=random.randrange(10000, 1000000),
+                        sample_match=win + lose
+                    ))
+
+            session.add_all(analyzed_champions)
+            session.commit()
+        else:
+            raise DataNotFound('Not Found Champion Data.')
+
+        return CREATED
+
+    @staticmethod
+    def champion_counter_strong_analysis():
+        champions = [x['champion_id'] for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id)]
+        analyzed_champions = []
+
+        # x => y로 지정했으면 반대로 y => x를 지정해줘야함.
+        # list not in으로 비교하면서 사용.
+        if champions:
+            for subject in champions:
+                for target in champions:
+                    if subject == target:
+                        continue
+
+                    score = round(random.uniform(1, 99.9), 1)
+                    win = random.randrange(1000, 100000)
+                    lose = random.randrange(1000, 100000)
+                    line_kills = random.randrange(100, 10000)
+                    line_deaths = random.randrange(100, 10000)
+
+                    analyzed_champions.append(CounterStrongAgainstModel(
                         champion_id=subject,
                         to_champion_id=target,
                         score=score,
