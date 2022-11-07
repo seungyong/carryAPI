@@ -112,3 +112,23 @@ class ChampionController(metaclass=Singleton):
             return champions_name
         else:
             raise DataNotFound('Not Found Champion')
+
+    @staticmethod
+    def get_champion_with_name(name):
+
+        champions_name = [dict(x) for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id,
+                                                                                      ChampionModel.kor_name,
+                                                                                      ChampionModel.eng_name).filter_by(kor_name=name)]
+        if champions_name:
+            return champions_name
+
+
+
+        champions_name = [dict(x) for x in session.query(ChampionModel).with_entities(ChampionModel.champion_id,
+                                                                                      ChampionModel.kor_name,
+                                                                                      ChampionModel.eng_name).filter_by(eng_name=name)]
+        if champions_name:
+            return champions_name
+
+        else:
+            return ''

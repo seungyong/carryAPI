@@ -71,3 +71,5 @@ class GameWithUsername(Resource):
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
+
+

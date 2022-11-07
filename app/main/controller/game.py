@@ -3,6 +3,8 @@ from os import getenv
 from urllib import request as url_request, parse
 from urllib.error import HTTPError
 
+from sqlalchemy import desc
+
 from app import session
 
 
@@ -149,11 +151,11 @@ class GameController(metaclass=Singleton):
                                 summoner2_id=game_info['summoner2Id'],
                             ))
                         print("check10")
-                        team_win = (100 if game['info']['teams'][0]['win'] else 200)
+                        #team_win = (100 if game['info']['teams'][0]['win'] else 200)
 
                         game_team_info.append(GameTeamInfoModel(
                             game_id=game_id,
-                            team_win=team_win,
+                            #team_win=team_win,
                             blue_baron_kills=game['info']['teams'][0]['objectives']['baron']['kills'],
                             blue_dragon_kills=game['info']['teams'][0]['objectives']['dragon']['kills'],
                             blue_tower_kills=game['info']['teams'][0]['objectives']['tower']['kills'],
@@ -170,7 +172,8 @@ class GameController(metaclass=Singleton):
                             red_total_gold=red_total_gold,
                         ))
                     print('check11')
-                except url_request.error.HTTPError as error:
+                #except url_request.error.HTTPError as error:
+                except HTTPError as error:
                     print('check22')
                     if error.status == 429:
                         return 'Too Many Request', 429
@@ -191,4 +194,52 @@ class GameController(metaclass=Singleton):
 
         return '', status_code
 
+    @staticmethod
+    def get_game(puuid,page,count,queue):
+        history = list()
+        players = list()
+
+        count *= count
+
+        if page == 1:
+            start = 0
+        else:
+            start = (page - 1) * count
+
+        if queue is None:
+            game_info = [x for x in session.query(GameModel, GamePlayerModel, GameTeamInfoModel)
+            .filter(GameModel.puuid == puuid).join(GamePlayerModel, GameModel.game_id == GamePlayerModel.game_id)
+            .join(GameTeamInfoModel, GameModel.game_id == GameTeamInfoModel.game_id)
+            .order_by(desc(GameModel.played_time)).offset(start).limit(count)]
+        else:
+            game_info = [x for x in session.query(GameModel, GamePlayerModel, GameTeamInfoModel)
+            .filter(GameModel.puuid == puuid, GameModel.queue_id == queue)
+            .join(GamePlayerModel, GameModel.game_id == GamePlayerModel.game_id)
+            .join(GameTeamInfoModel, GameModel.game_id == GameTeamInfoModel.game_id)
+            .order_by(desc(GameModel.played_time)).offset(start).limit(count)]
+
+        # 데이터 가공
+        for i, game in enumerate(game_info):
+            info = dict()
+            i += 1
+            players.append(game[1].serialize)
+
+            # 10개당(플레이어) 1개의 게임
+            if i % 10 == 0:
+                for key, value in game[0].serialize.items():
+                    info[key] = value
+
+                for key, value in game[2].serialize.items():
+                    info[key] = value
+
+                info['players'] = players
+                players = list()
+                history.append(info)
+
+        res = response.response_data(history)
+
+        return res
+
+    # @staticmethod
+    # def get_game_with_game_id(game_id):
 

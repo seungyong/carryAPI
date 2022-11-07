@@ -47,52 +47,22 @@ class AllGame(Resource):
     @game_ns.response(204, 'No Data', response_no_data_model)
     def get(self, puuid):
         """Get User game History."""
-        page = flask_request.args.get('page', default=1, type=int)
-        count = flask_request.args.get('count', default=20, type=int)
-        queue = flask_request.args.get('queue', default=None, type=int)
-        history = list()
-        players = list()
+        try:
+            page = flask_request.args.get('page', default=1, type=int)
+            count = flask_request.args.get('count', default=20, type=int)
+            queue = flask_request.args.get('queue', default=None, type=int)
 
-        count *= count
+            game_controller = GameController
 
-        if page == 1:
-            start = 0
-        else:
-            start = (page - 1) * count
+            res = game_controller.get_game(puuid,page,count,queue)
 
-        if queue is None:
-            game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
-            .filter(Game_model.puuid == puuid).join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
-            .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
-            .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
-        else:
-            game_info = [x for x in session.query(Game_model, Game_player_model, Game_team_info_model)
-            .filter(Game_model.puuid == puuid, Game_model.queue_id == queue)
-            .join(Game_player_model, Game_model.game_id == Game_player_model.game_id)
-            .join(Game_team_info_model, Game_model.game_id == Game_team_info_model.game_id)
-            .order_by(desc(Game_model.played_time)).offset(start).limit(count)]
-
-        # 데이터 가공
-        for i, game in enumerate(game_info):
-            info = dict()
-            i += 1
-            players.append(game[1].serialize)
-
-            # 10개당(플레이어) 1개의 게임
-            if i % 10 == 0:
-                for key, value in game[0].serialize.items():
-                    info[key] = value
-
-                for key, value in game[2].serialize.items():
-                    info[key] = value
-
-                info['players'] = players
-                players = list()
-                history.append(info)
-
-        res = response.response_data(history)
-
-        return res, res['statusCode']
+            return res, constants.OK
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
 
     @game_ns.doc(
         params={
