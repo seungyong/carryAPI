@@ -47,6 +47,7 @@ class AllGame(Resource):
     @game_ns.response(204, 'No Data', response_no_data_model)
     def get(self, puuid):
         """Get User game History."""
+        print("get all")
         try:
             page = flask_request.args.get('page', default=1, type=int)
             count = flask_request.args.get('count', default=20, type=int)
@@ -54,7 +55,7 @@ class AllGame(Resource):
 
             game_controller = GameController
 
-            res = game_controller.get_game(puuid,page,count,queue)
+            res = game_controller.get_game(puuid, page, count, queue)
 
             return res, constants.OK
         except DataNotFound as e:
@@ -85,7 +86,7 @@ class AllGame(Resource):
             print("잇힝")
             if code == constants.CREATED:
                 return '', constants.CREATED
-        except DataNotFound as e :
+        except DataNotFound as e:
             return e.__dict__, e.code
         except Forbidden as e:
             return e.__dict__, e.code
@@ -107,3 +108,20 @@ class AllGame(Resource):
             status_code = 500
 
         return '', status_code
+
+
+@game_ns.route('/withid/<string:game_id>')
+@game_ns.response(500, 'Internal Server Error')
+class GameWithId(Resource):
+    @staticmethod
+    @game_ns.response(200, 'Success')
+    @game_ns.response(404, 'No Data', response_no_data_model)
+    def get(game_id):
+        """Get item data with game_id"""
+        print("asdas2")
+        try:
+            game_controller = GameController
+            res = game_controller.get_game_with_game_id(game_id)
+            return res, constants.OK
+        except Exception as e:
+            print(e)

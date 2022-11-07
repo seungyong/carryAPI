@@ -6,7 +6,7 @@ from flask import Blueprint
 from flask_restx import Namespace, Resource, fields
 
 from app import session
-from ..models.item import Item as Item_model # 그대로 써도 될듯.
+from ..models.item import Item as Item_model  # 그대로 써도 될듯.
 from ..controller.item import ItemController
 
 from ..util import response, riot_url, version as version_util
@@ -49,7 +49,6 @@ class AllItem(Resource):
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
 
-
     @staticmethod
     @item_ns.response(201, 'Created')
     @item_ns.response(403, 'Forbidden', response_forbidden_model)
@@ -69,7 +68,6 @@ class AllItem(Resource):
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code
-
 
     @staticmethod
     def put(self):

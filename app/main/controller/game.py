@@ -240,6 +240,52 @@ class GameController(metaclass=Singleton):
 
         return res
 
-    # @staticmethod
-    # def get_game_with_game_id(game_id):
+    @staticmethod
+    def get_game_with_game_id(game_id):
+        history = list()
+        players = list()
 
+
+
+        game_info = [x for x in session.query(GameModel, GamePlayerModel, GameTeamInfoModel)
+        .filter(GameModel.game_id == game_id).join(GamePlayerModel, GameModel.game_id == GamePlayerModel.game_id)
+        .join(GameTeamInfoModel, GameModel.game_id == GameTeamInfoModel.game_id)]
+
+
+        # 데이터 가공
+        for i, game in enumerate(game_info):
+            info = dict()
+            i += 1
+            players.append(game[1].serialize)
+
+            # 10개당(플레이어) 1개의 게임
+            if i % 10 == 0:
+                for key, value in game[0].serialize.items():
+                    info[key] = value
+
+                for key, value in game[2].serialize.items():
+                    info[key] = value
+
+                info['players'] = players
+                players = list()
+                history.append(info)
+
+        res = response.response_data(history)
+
+        return res
+
+    def get_game_id_filter_queue(self, puuid, queue):
+
+        if queue is None :
+            res = [dict(x) for x in session.query(GameModel)
+            .with_entities(GameModel.game_id)
+            .filter_by(puuid=puuid)]
+        else :
+            res = [dict(x) for x in session.query(GameModel)
+            .with_entities(GameModel.game_id)
+            .filter_by(puuid=puuid, queue=queue)]
+
+        if res:
+            return res
+        else:
+            return ''

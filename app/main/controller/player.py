@@ -4,7 +4,6 @@ from urllib.error import HTTPError
 
 from app import session
 
-
 from ..models.player import Player as PlayerModel
 from ..util.single_ton import Singleton
 
@@ -16,6 +15,7 @@ from ..exception.data_not_found import DataNotFound
 from ..exception.forbidden import Forbidden
 from os import getenv
 from datetime import datetime
+
 
 class PlayerController(metaclass=Singleton):
     @staticmethod
@@ -54,15 +54,18 @@ class PlayerController(metaclass=Singleton):
             else:
                 raise Exception
 
-
         for info in data:
             if info['queueType'] == 'RANKED_SOLO_5x5':
                 player.solo_tier = info['tier']
-                player.solo_rank = 1 if info['rank'] == 'I' else 2 if info['rank'] == 'II' else 3 if info['rank'] == 'III' else 4 if info['rank'] == 'IV' else 5
+                player.solo_rank = 1 if info['rank'] == 'I' else 2 if info['rank'] == 'II' else 3 if info[
+                                                                                                         'rank'] == 'III' else 4 if \
+                    info['rank'] == 'IV' else 5
                 player.solo_point = info['leaguePoints']
             elif info['queueType'] == 'RANKED_FLEX_SR':
                 player.flex_tier = info['tier']
-                player.flex_rank = 1 if info['rank'] == 'I' else 2 if info['rank'] == 'II' else 3 if info['rank'] == 'III' else 4 if info['rank'] == 'IV' else 5
+                player.flex_rank = 1 if info['rank'] == 'I' else 2 if info['rank'] == 'II' else 3 if info[
+                                                                                                         'rank'] == 'III' else 4 if \
+                    info['rank'] == 'IV' else 5
                 player.flex_point = info['leaguePoints']
 
             if info['queueType'] != 'RANKED_TFT_DOUBLE_UP':
@@ -81,3 +84,14 @@ class PlayerController(metaclass=Singleton):
             return players
         else:
             raise DataNotFound('Not Found Champion')
+
+    @staticmethod
+    def get_player_puuid(summoner_id):
+        res = [dict(x) for x in session.query(PlayerModel)
+        .with_entities(PlayerModel.puuid)
+        .filter_by(summoner_id=summoner_id)]
+
+        if res :
+            return res
+        else:
+            return ''
