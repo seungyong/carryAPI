@@ -4,6 +4,7 @@ from app import session
 
 from ..controller.game import GameController
 from ..controller.player import PlayerController
+from flask import Blueprint, request as flask_request
 
 from ..util import constants
 from ..exception.data_not_found import DataNotFound
@@ -32,27 +33,32 @@ class AllMost(Resource):
     )
     @most_ns.response(201, 'Created')
     @most_ns.response(403, 'Forbidden', response_forbidden_model)
-    def post(self, summoner_id, flask_request=None):
+    def post(self, summoner_id):
         """Insert Champions data that doesn't exist. (Admin API)"""
         try:
             queue = flask_request.args.get('queue', default=None, type=int)
-            
             game_controller = GameController
             player_controller = PlayerController
             puuid = player_controller.get_player_puuid(summoner_id)
+            print(str(puuid)[3:-4])
+            player_game_list = game_controller.get_game_id_filter_queue(self, str(puuid)[3:-4], queue)
 
-            player_game_list = game_controller(puuid, queue)
+            print(player_game_list)
 
-            for game_id in player_game_list :
-                game_controller.get_game_with_game_id(game_id)
+            for game_id in player_game_list:
+                print("ckckck")
+                game_controller.post_most_champion(game_controller, summoner_id, queue, game_id)
             # 여기까지 함.
 
 
         except DataNotFound as e:
+            print(e)
             return e.__dict__, e.code
         except Forbidden as e:
+            print(e)
             return e.__dict__, e.code
-        except Exception:
+        except Exception as e:
+            print(e)
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code

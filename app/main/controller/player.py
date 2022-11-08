@@ -87,10 +87,9 @@ class PlayerController(metaclass=Singleton):
 
     @staticmethod
     def get_player_puuid(summoner_id):
-        res = [dict(x) for x in session.query(PlayerModel)
+        res = [x for x in session.query(PlayerModel)
         .with_entities(PlayerModel.puuid)
         .filter_by(summoner_id=summoner_id)]
-
         if res :
             return res
         else:

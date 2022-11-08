@@ -11,6 +11,8 @@ from app import session
 from ..models.game import Game as GameModel
 from ..models.game_player import GamePlayer as GamePlayerModel
 from ..models.game_team_info import GameTeamInfo as GameTeamInfoModel
+from ..models.solo_most_champion import SoloMostChampion as SoloMostChampionModel
+from ..models.flex_most_champion import FlexMostChampion as FlexMostChampionModel
 
 from ..util.single_ton import Singleton
 
@@ -275,17 +277,20 @@ class GameController(metaclass=Singleton):
         return res
 
     def get_game_id_filter_queue(self, puuid, queue):
-
-        if queue is None :
+        print(puuid, queue)
+        if queue is None:
             res = [dict(x) for x in session.query(GameModel)
             .with_entities(GameModel.game_id)
             .filter_by(puuid=puuid)]
-        else :
+        else:
             res = [dict(x) for x in session.query(GameModel)
             .with_entities(GameModel.game_id)
             .filter_by(puuid=puuid, queue=queue)]
+        return res
 
-        if res:
-            return res
-        else:
-            return ''
+
+    def post_most_champion(self,summoner_id, queue, game_id):
+        game_info = self.get_game_with_game_id(game_id)
+        print(game_info)
+        return 1
+
