@@ -34,7 +34,6 @@ class AllMost(Resource):
     @most_ns.response(201, 'Created')
     @most_ns.response(403, 'Forbidden', response_forbidden_model)
     def post(self, summoner_id):
-        """Insert Champions data that doesn't exist. (Admin API)"""
         try:
             queue = flask_request.args.get('queue', default=None, type=int)
             game_controller = GameController
@@ -46,16 +45,17 @@ class AllMost(Resource):
             print(player_game_list)
 
             for game_id in player_game_list:
-                print("ckckck")
-                game_controller.post_most_champion(game_controller, summoner_id, queue, game_id)
+                game_controller.post_most_champion(GameController, summoner_id, queue, game_id)
             # 여기까지 함.
 
 
         except DataNotFound as e:
             print(e)
+            session.rollback()
             return e.__dict__, e.code
         except Forbidden as e:
             print(e)
+            session.rollback()
             return e.__dict__, e.code
         except Exception as e:
             print(e)

@@ -125,3 +125,12 @@ class GameWithId(Resource):
             return res, constants.OK
         except Exception as e:
             print(e)
+
+    def post(self, game_id):
+        try:
+            game_contorller = GameController
+            game_contorller.get_test_game(GameController, game_id, 'vumohJCQwV-DEMRFQQqo4iTsxtSclzaQ00Sh0k6T4y2QFao')
+            return '', constants.OK
+        except Exception as e:
+            session.rollback()
+            print(e)
