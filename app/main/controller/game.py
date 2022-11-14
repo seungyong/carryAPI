@@ -366,16 +366,26 @@ class GameController(metaclass=Singleton):
                     played_time = datetime.fromtimestamp(int(game_end_timestamp))
                     print("ck33")
 
+
+
                     tmp = {'gameId': game['metadata']['matchId'],
                            'gameDuration': game['info']['gameDuration'],
                            'playedTime': played_time,
                            'queueId': game['info']['queueId'],
                            'teamWin': "100",
                            'players': {},
-
+                           'teamInfos': {},
+                           'itemBuild': {},
+                           'skillsBuild': {}
                            }
                     games['history'] = tmp
                     player_index = 0
+                    blue_total_gold = 0
+                    red_total_gold = 0
+                    blue_champion_deaths = 0
+                    red_champion_deaths = 0
+                    blue_champion_assists = 0
+                    red_champion_assists = 0
                     for participant in game['info']['participants']:
                         print("ck4")
                         player = PlayerController.get_player_with_summoner_id(participant['summonerId'])
@@ -390,6 +400,15 @@ class GameController(metaclass=Singleton):
                         else:
                             kill_type = ''
 
+                        if participant['teamId'] == 100:
+                            blue_total_gold += int(participant['goldEarned'])
+                            blue_champion_assists += participant['assists']
+                            blue_champion_deaths += participant['deaths']
+                        else:
+                            red_total_gold += int(participant['goldEarned'])
+                            red_champion_assists += participant['assists']
+                            red_champion_deaths += participant['deaths']
+
                         if 'challenges' in participant:
                             kda = participant['challenges']['kda']
                             control_wards_placed = participant['challenges']['controlWardsPlaced']
@@ -400,6 +419,8 @@ class GameController(metaclass=Singleton):
                                 kda = -1
                             else:
                                 kda = (participant['kills'] + participant['assists']) / participant['deaths']
+
+
 
 
                         player_data = {
@@ -443,6 +464,30 @@ class GameController(metaclass=Singleton):
                         games['history']['players'][player_index] = player_data
                         player_index += 1
 
+                    teaminfos_data_blue = {
+                        "teamId": 100,
+                        "baronKills": game['info']['teams'][0]['objectives']['baron']['kills'],
+                        "dragonKills": game['info']['teams'][0]['objectives']['dragon']['kills'],
+                        "towerKills": game['info']['teams'][0]['objectives']['tower']['kills'],
+                        "championKills": game['info']['teams'][0]['objectives']['champion']['kills'],
+                        "totalGold": blue_total_gold,
+                        "totalKills": game['info']['teams'][0]['objectives']['champion']['kills'],
+                        "totalDeaths": blue_champion_deaths,
+                        "totalAssist": blue_champion_assists
+                    }
+                    teaminfos_data_red = {
+                        "teamId": 100,
+                        "baronKills": game['info']['teams'][1]['objectives']['baron']['kills'],
+                        "dragonKills": game['info']['teams'][1]['objectives']['dragon']['kills'],
+                        "towerKills": game['info']['teams'][1]['objectives']['tower']['kills'],
+                        "championKills": game['info']['teams'][1]['objectives']['champion']['kills'],
+                        "totalGold": red_total_gold,
+                        "totalKills": game['info']['teams'][1]['objectives']['champion']['kills'],
+                        "totalDeaths": red_champion_deaths,
+                        "totalAssist": red_champion_assists
+                    }
+                    games['history']['teamInfos'][0] = teaminfos_data_blue
+                    games['history']['teamInfos'][1] = teaminfos_data_red
                     print(games)
 
                     return '', OK
