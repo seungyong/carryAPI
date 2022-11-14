@@ -12,6 +12,7 @@ from ..models.game_player import GamePlayer as GamePlayerModel
 from ..models.game_team_info import GameTeamInfo as GameTeamInfoModel
 from ..models.solo_most_champion import SoloMostChampion as SoloMostChampionModel
 from ..models.flex_most_champion import FlexMostChampion as FlexMostChampionModel
+from .player import PlayerController
 
 from ..util.single_ton import Singleton
 
@@ -354,7 +355,7 @@ class GameController(metaclass=Singleton):
             url = riot_url.matches_info_url(game_id)
             req = url_request.Request(url, None, headers)
 
-            games = {'history' : ''}
+            games = {'history': ''}
             print("ck")
             try:
                 with url_request.urlopen(req) as res:
@@ -363,22 +364,88 @@ class GameController(metaclass=Singleton):
                     # 밀리초 제거
                     game_end_timestamp = str(game['info']['gameEndTimestamp'])[:-3]
                     played_time = datetime.fromtimestamp(int(game_end_timestamp))
-                    print("ck3")
+                    print("ck33")
+
+                    tmp = {'gameId': game['metadata']['matchId'],
+                           'gameDuration': game['info']['gameDuration'],
+                           'playedTime': played_time,
+                           'queueId': game['info']['queueId'],
+                           'teamWin': "100",
+                           'players': {},
+
+                           }
+                    games['history'] = tmp
+                    player_index = 0
                     for participant in game['info']['participants']:
                         print("ck4")
-                        if participant['summonerId'] == summoner_id:
-                            tmp = {'puuid': participant['puuid'],
-                                   'gameId': game['metadata']['matchId'],
-                                   'gameDuration':game['info']['gameDuration'],
-                                   'playedTime':played_time,
-                                   'queueId': game['info']['queueId'],
-                                   'teamWin':"100",
-                                   'champion_id':participant['championId'],
-                                   'players':''
-                                   }
-                            games['history'] = tmp
-                    print("ck4")
+                        player = PlayerController.get_player_with_summoner_id(participant['summonerId'])
+                        if participant['pentaKills'] > 0:
+                            kill_type = '펜타킬'
+                        elif participant['quadraKills'] > 0:
+                            kill_type = '쿼드라킬'
+                        elif participant['tripleKills'] > 0:
+                            kill_type = '트리플킬'
+                        elif participant['doubleKills'] > 0:
+                            kill_type = '더블킬'
+                        else:
+                            kill_type = ''
+
+                        if 'challenges' in participant:
+                            kda = participant['challenges']['kda']
+                            control_wards_placed = participant['challenges']['controlWardsPlaced']
+                        else:
+                            # -1은 Perfect 게임
+                            # URF 같은 특수모드는 kda를 주지 않음 (0으로 나눌 시 ZeroDivision Error 발생)
+                            if participant['deaths'] == 0:
+                                kda = -1
+                            else:
+                                kda = (participant['kills'] + participant['assists']) / participant['deaths']
+
+
+                        player_data = {
+                            'teamId': participant['teamId'],
+                            'puuid': player[0]['puuid'],
+                            'summonerId': participant['summonerId'],
+                            'summonerName': participant['summonerName'],
+                            'level': player[0]['level'],
+                            'soloTier': player[0]['solo_tier'],
+                            'soloRank': player[0]['solo_rank'],
+                            'soloPoint': player[0]['solo_point'],
+                            'flexTier': player[0]['flex_tier'],
+                            'flexRank': player[0]['flex_rank'],
+                            'flexPoint': player[0]['flex_point'],
+                            'championId': participant['championId'],
+                            'championLevel': participant['champLevel'],
+                            'item0Id': participant['item0'],
+                            'item1Id': participant['item1'],
+                            'item2Id': participant['item2'],
+                            'item3Id': participant['item3'],
+                            'item4Id': participant['item4'],
+                            'item5Id': participant['item5'],
+                            'item6Id': participant['item6'],
+                            'teamPosition': participant['teamPosition'],
+                            'killInvolvement': 80, # 뭔지 모르겠음.
+                            'kda': kda,
+                            'firstBlood': 1 if participant['firstBloodKill'] else 0,
+                            'kills': participant['kills'],
+                            'deaths': participant['deaths'],
+                            'assists': participant['assists'],
+                            'maxKillType': kill_type,
+                            'totalDamageToChampions': participant['totalDamageDealtToChampions'],
+                            'cs': participant['totalMinionsKilled'] + participant['neutralMinionsKilled'],
+                            'goldEarned': participant['goldEarned'],
+                            'visionScore': participant['visionScore'],
+                            'wardsPlaced': participant['wardsPlaced'],
+                            'controlWardsPlaced': control_wards_placed,
+                            'summoner1Id': participant['summoner1Id'],
+                            'summoner2Id': participant['summoner2Id']
+                        }
+                        games['history']['players'][player_index] = player_data
+                        player_index += 1
+
                     print(games)
+
+                    return '', OK
 
             except HTTPError as error:
                 if error.status == 429:

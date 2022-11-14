@@ -76,7 +76,7 @@ class PlayerController(metaclass=Singleton):
         return CREATED
 
     @staticmethod
-    def get_player(self, username):
+    def get_player(username):
         """Get player data with username."""
         players = [x.serialize for x in session.query(PlayerModel).filter_by(summoner_name=username)]
 
@@ -84,6 +84,16 @@ class PlayerController(metaclass=Singleton):
             return players
         else:
             raise DataNotFound('Not Found Champion')
+
+    @staticmethod
+    def get_player_with_summoner_id(summoner_id):
+        """Get player data with summonerId."""
+        players = [x.serialize for x in session.query(PlayerModel).filter_by(summoner_id=summoner_id)]
+
+        if players:
+            return players
+        else:
+            raise DataNotFound('Not Found Summoner')
 
     @staticmethod
     def get_player_puuid(summoner_id):
