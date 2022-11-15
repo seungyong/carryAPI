@@ -96,6 +96,28 @@ class ItemController(metaclass=Singleton):
         else:
             raise DataNotFound('Not Found Item Data')
 
+    @staticmethod
+    def get_item_with_id(item_id):
+        item = [ dict(x) for x in session.query(ItemModel).with_entities(ItemModel.item_id,
+                                                                         ItemModel.name,
+                                                                         ItemModel.description,
+                                                                         ItemModel.plain_text,
+                                                                         ItemModel.price,
+                                                                         ItemModel.sell,
+                                                                         ItemModel.tags,
+                                                                         ItemModel.item_grade
+                                                                         ).filter_by(item_id=item_id)]
+        if item:
+            return item
+        else:
+            raise DataNotFound('Not Found Item Data')
+
+
+
+
+
+
+
         # try:
         #     items = [x.serialize for x in session.query(Item_model).all()]
         #     res = response.response_data(items)

@@ -111,9 +111,10 @@ class ItemWithId(Resource):
     def get(self, item_id):
         """Get item data with item_id"""
         try:
-            item = [x.serialize for x in session.query(Item_model).filter_by(item_id=item_id)]
-            res = response.response_data(item)
+            item_controller = ItemController
+            item = item_controller.get_item_with_id(item_id)
 
-            return res, res['statusCode']
-        except:
+            return item, constants.OK
+        except Exception as e:
+            print(e)
             return '', 500

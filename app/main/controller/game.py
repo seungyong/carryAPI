@@ -13,6 +13,7 @@ from ..models.game_team_info import GameTeamInfo as GameTeamInfoModel
 from ..models.solo_most_champion import SoloMostChampion as SoloMostChampionModel
 from ..models.flex_most_champion import FlexMostChampion as FlexMostChampionModel
 from .player import PlayerController
+from .item import ItemController
 
 from ..util.single_ton import Singleton
 
@@ -488,6 +489,11 @@ class GameController(metaclass=Singleton):
                     }
                     games['history']['teamInfos'][0] = teaminfos_data_blue
                     games['history']['teamInfos'][1] = teaminfos_data_red
+                    item1 = ItemController.get_item_with_id(games['history']['players'][1]['item3Id'])
+                    print(item1)
+                    itemsBuild_data = {}
+
+
                     print(games)
 
                     return '', OK
