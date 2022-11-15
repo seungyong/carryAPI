@@ -1,9 +1,14 @@
-from ..util.decimal import to_first_decimal_place_cut
-
 from app import db
+from typing import Dict, List, Any
 
 from sqlalchemy import Column
 from sqlalchemy.dialects.mysql import TINYINT, SMALLINT, VARCHAR, DECIMAL
+
+from ..util.decimal import to_decimal_place_cut
+
+from ..models.champion_basic import ChampionBasic as ChampionBasicModel
+from ..models.counter_strong_against import CounterStrongAgainst as CounterStrongAgainstModel
+from ..models.counter_weak_against import CounterWeakAgainst as CounterWeakAgainstModel
 
 
 class Champion(db.Model):
@@ -85,68 +90,113 @@ class Champion(db.Model):
             'attack_speed_per_level': float(self.attack_speed_per_level),
         }
 
-    @staticmethod
-    def to_response_ranking(self_class, basic_class, counter_classes):
-        total_match = 100000000
-        win_rate = to_first_decimal_place_cut(basic_class['total_win'] / basic_class['total_match'] * 100)
-        pick_rate = to_first_decimal_place_cut(basic_class['total_pick'] / total_match * 100)
-        ban_rate = to_first_decimal_place_cut(basic_class['total_ban'] / total_match * 100)
 
-        return {
-            'championId': self_class['champion_id'],
-            'info': {
-                'korName': self_class['kor_name'],
-                'engName': self_class['eng_name'],
-                'subName': self_class['sub_name'],
-                'description': self_class['description'],
-                'position': self_class['position'],
-                'tags': self_class['tags'],
-                'difficulty': self_class['difficulty'],
-                'hp': self_class['hp'],
-                'hpPerLevel': self_class['hp_per_level'],
-                'mp': self_class['mp'],
-                'mpPerLevel': self_class['mp_per_level'],
-                'moveSpeed': self_class['move_speed'],
-                'armor': self_class['armor'],
-                'armorPerLevel': float(self_class['armor_per_level']),
-                'attackRange': self_class['attack_range'],
-                'attackDamage': self_class['attack_damage'],
-                'attackDamagePerLevel': float(self_class['attack_damage_per_level']),
-                'attackSpeed': float(self_class['attack_speed']),
-                'attackSpeedPerLevel': float(self_class['attack_speed_per_level']),
-                'analysis': {
-                    'tier': {
-                        'current': basic_class['current_tier'],
-                        'prev': basic_class['prev_tier'],
-                        'changed': basic_class['prev_tier'] - basic_class['current_tier']
-                    },
-                    'damageKind': {
-                        'ad': basic_class['ad_damage_percent'],
-                        'ap': basic_class['ap_damage_percent']
-                    },
-                    'score': basic_class['score'],
-                    'winRate': win_rate,
-                    'pickRate': pick_rate,
-                    'banRate': ban_rate,
-                    'sampleMatch': basic_class['total_match']
+def to_response_ranking(self_class: Champion, basic_class: ChampionBasicModel, counter_classes: CounterWeakAgainstModel) -> Dict[str, Any]:
+    total_match = 100000000
+    win_rate = to_decimal_place_cut(basic_class['total_win'] / basic_class['total_match'] * 100, 1)
+    pick_rate = to_decimal_place_cut(basic_class['total_pick'] / total_match * 100, 1)
+    ban_rate = to_decimal_place_cut(basic_class['total_ban'] / total_match * 100, 1)
+
+    return {
+        'championId': self_class['champion_id'],
+        'info': {
+            'korName': self_class['kor_name'],
+            'engName': self_class['eng_name'],
+            'subName': self_class['sub_name'],
+            'description': self_class['description'],
+            'position': self_class['position'],
+            'tags': self_class['tags'],
+            'difficulty': self_class['difficulty'],
+            'hp': self_class['hp'],
+            'hpPerLevel': self_class['hp_per_level'],
+            'mp': self_class['mp'],
+            'mpPerLevel': self_class['mp_per_level'],
+            'moveSpeed': self_class['move_speed'],
+            'armor': self_class['armor'],
+            'armorPerLevel': float(self_class['armor_per_level']),
+            'attackRange': self_class['attack_range'],
+            'attackDamage': self_class['attack_damage'],
+            'attackDamagePerLevel': float(self_class['attack_damage_per_level']),
+            'attackSpeed': float(self_class['attack_speed']),
+            'attackSpeedPerLevel': float(self_class['attack_speed_per_level']),
+            'analysis': {
+                'tier': {
+                    'current': basic_class['current_tier'],
+                    'prev': basic_class['prev_tier'],
+                    'changed': basic_class['prev_tier'] - basic_class['current_tier']
                 },
-                'counter': [
-                    {
-                        'championId': counter_class['to_champion_id'],
-                        'engName': counter_class['eng_name'],
-                        'score': float(counter_class['score'])
-                    }
-                    for counter_class in counter_classes
-                ]
+                'damageKind': {
+                    'ad': basic_class['ad_damage_percent'],
+                    'ap': basic_class['ap_damage_percent']
+                },
+                'score': basic_class['score'],
+                'winRate': win_rate,
+                'pickRate': pick_rate,
+                'banRate': ban_rate,
+                'sampleMatch': basic_class['total_match']
             },
-        }
+            'counter': [
+                {
+                    'championId': counter_class['to_champion_id'],
+                    'engName': counter_class['eng_name'],
+                    'score': float(counter_class['score'])
+                }
+                for counter_class in counter_classes
+            ]
+        },
+    }
 
-    @staticmethod
-    def to_response_name(champion):
-        return {
-            'championId': champion['champion_id'],
-            'info': {
-                'korName': champion['kor_name'],
-                'engName': champion['eng_name']
+
+def to_response_name(champion: Champion) -> Dict[str, Any]:
+    return {
+        'championId': champion['champion_id'],
+        'info': {
+            'korName': champion['kor_name'],
+            'engName': champion['eng_name']
+        }
+    }
+
+
+def to_response_counter(counters: List[List[Dict]]) -> List[Dict]:
+    total_match = 100000000
+    return [
+        {
+            'self': {
+                'championId': items[0]['champion_id'],
+                'korName': items[0]['kor_name'],
+                'engName': items[0]['eng_name'],
+                'kda': to_decimal_place_cut(
+                    (items[0]['champion_kills'] + items[0]['champion_assists']) / items[0]['champion_deaths'],
+                    2
+                ),
+                'winRate': to_decimal_place_cut(items[0]['win'] / items[0]['sample_match'] * 100, 2),
+                'lineKillRate': to_decimal_place_cut(items[0]['line_kills'] / items[0]['line_deaths'] * 100, 2),
+                'banRate': to_decimal_place_cut(items[0]['total_ban'] / total_match * 100, 2),
+                'killInvolvementRate': to_decimal_place_cut(
+                    (items[0]['champion_kills'] + items[0]['champion_assists']) /
+                    (items[0]['team_kills'] + items[0]['team_assists']) * 100,
+                    2
+                ),
+                'firstTower': items[0]['total_first_tower']
+            },
+            'enemy': {
+                'championId': items[1]['champion_id'],
+                'korName': items[1]['kor_name'],
+                'engName': items[1]['eng_name'],
+                'kda': to_decimal_place_cut(
+                    (items[1]['champion_kills'] + items[1]['champion_assists']) / items[1]['champion_deaths'],
+                    2
+                ),
+                'winRate': to_decimal_place_cut(items[1]['win'] / items[1]['sample_match'] * 100, 2),
+                'lineKillRate': to_decimal_place_cut(items[1]['line_kills'] / items[1]['line_deaths'] * 100, 2),
+                'banRate': to_decimal_place_cut(items[1]['total_ban'] / total_match * 100, 2),
+                'killInvolvementRate': to_decimal_place_cut(
+                    (items[1]['champion_kills'] + items[1]['champion_assists']) /
+                    (items[1]['team_kills'] + items[1]['team_assists']) * 100,
+                    2
+                ),
+                'firstTower': items[1]['total_first_tower']
             }
         }
+        for items in counters
+    ]

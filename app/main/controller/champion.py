@@ -1,4 +1,5 @@
 import random
+from typing import List, Dict
 from json import loads
 from urllib import request as url_request
 from urllib.error import HTTPError
@@ -7,7 +8,7 @@ from collections import defaultdict
 from app import session
 
 from ..controller.champion_skill import ChampionSkillController
-from ..models.champion import Champion as ChampionModel
+from ..models.champion import Champion as ChampionModel, to_response_counter, to_response_name, to_response_ranking
 from ..models.champion_basic import ChampionBasic as ChampionBasicModel
 from ..models.counter_weak_against import CounterWeakAgainst as CounterWeakAgainstModel
 from ..models.counter_strong_against import CounterStrongAgainst as CounterStrongAgainstModel
@@ -54,7 +55,7 @@ class ChampionController(metaclass=Singleton):
 
                 # response 반환 값 맞추기
                 api_results[position].append(
-                    ChampionModel.to_response_ranking(
+                    to_response_ranking(
                         db_results[position][idx][0], db_results[position][idx][1], db_results[position][idx][2]
                     )
                 )
@@ -77,15 +78,118 @@ class ChampionController(metaclass=Singleton):
 
         for champion in champions_name:
             if champion['position'] in result:
-                result[champion['position']].append(ChampionModel.to_response_name(champion))
+                result[champion['position']].append(to_response_name(champion))
             else:
                 result[champion['position']] = list()
-                result[champion['position']].append(ChampionModel.to_response_name(champion))
+                result[champion['position']].append(to_response_name(champion))
 
         if result:
             return result
         else:
             raise DataNotFound('Not Found Champion')
+
+    @staticmethod
+    def get_champion_counter(position: str, champion_id: int) -> List[Dict]:
+        """
+        :param position: 검색하고자 하는 챔피언의 포지션
+        :param champion_id: 검색하고자 하는 챔피언 ID
+        :return: 상대하기 쉬운, 어려운 카운터 정보 제공.
+
+        챔피언 1명이 한 포지션에서 나머지 챔피언을 다 만나지는 않기 때문에 count를 걸지 않아도 됨.
+        다른 사이트에서도 카운터에 대한 모든 정보를 제공하고 있음. (대략 50~65개정도)
+        """
+        strong_counters: List[List[Dict]] = [
+            [dict(x)] for x in
+            session.query(CounterStrongAgainstModel)
+            .join(ChampionModel, CounterStrongAgainstModel.champion_id == ChampionModel.champion_id)
+            .join(ChampionBasicModel, ChampionModel.champion_id == ChampionBasicModel.champion_id)
+            .filter(ChampionModel.position == position, CounterStrongAgainstModel.champion_id == champion_id)
+            .with_entities(
+                ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name, CounterStrongAgainstModel.to_champion_id,
+                CounterStrongAgainstModel.win, CounterStrongAgainstModel.lose, CounterStrongAgainstModel.line_kills,
+                CounterStrongAgainstModel.line_deaths, CounterStrongAgainstModel.champion_kills, CounterStrongAgainstModel.champion_deaths,
+                CounterStrongAgainstModel.champion_assists, CounterStrongAgainstModel.team_kills, CounterStrongAgainstModel.team_assists,
+                CounterStrongAgainstModel.total_first_tower, CounterStrongAgainstModel.sample_match, ChampionBasicModel.total_ban
+            )
+            .order_by(CounterStrongAgainstModel.score.desc())
+        ]
+        weak_counters: List[List[Dict]] = [
+            [dict(x)] for x in
+            session.query(CounterWeakAgainstModel)
+            .join(ChampionModel, CounterWeakAgainstModel.champion_id == ChampionModel.champion_id)
+            .join(ChampionBasicModel, ChampionModel.champion_id == ChampionBasicModel.champion_id)
+            .filter(ChampionModel.position == position, CounterWeakAgainstModel.champion_id == champion_id)
+            .with_entities(
+                ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name,
+                CounterWeakAgainstModel.to_champion_id, CounterWeakAgainstModel.win, CounterWeakAgainstModel.lose,
+                CounterWeakAgainstModel.line_kills, CounterWeakAgainstModel.line_deaths, CounterWeakAgainstModel.champion_kills,
+                CounterWeakAgainstModel.champion_deaths, CounterWeakAgainstModel.champion_assists,
+                CounterWeakAgainstModel.team_kills, CounterWeakAgainstModel.team_assists, CounterWeakAgainstModel.total_first_tower,
+                CounterWeakAgainstModel.sample_match, ChampionBasicModel.total_ban
+            )
+            .order_by(CounterWeakAgainstModel.score.desc())
+        ]
+
+        if not strong_counters and not weak_counters:
+            raise DataNotFound('Counter champion data not found.')
+
+        # if strong_counters
+
+        # x => y에서 y => x 구하기
+        for items in strong_counters:
+            weak_champion_id: int = items[0]['to_champion_id']
+            weak_champions: List[Dict] = [
+                dict(x) for x in
+                session.query(CounterStrongAgainstModel)
+                .join(ChampionModel, CounterStrongAgainstModel.champion_id == ChampionModel.champion_id)
+                .join(ChampionBasicModel, ChampionModel.champion_id == ChampionBasicModel.champion_id)
+                .filter(
+                    # ChampionModel.position == position,
+                    CounterStrongAgainstModel.champion_id == weak_champion_id,
+                    CounterStrongAgainstModel.to_champion_id == champion_id
+                )
+                .with_entities(
+                    ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name,
+                    CounterStrongAgainstModel.to_champion_id, CounterStrongAgainstModel.win,
+                    CounterStrongAgainstModel.lose, CounterStrongAgainstModel.line_kills,
+                    CounterStrongAgainstModel.line_deaths, CounterStrongAgainstModel.champion_kills,
+                    CounterStrongAgainstModel.champion_deaths, CounterStrongAgainstModel.champion_assists,
+                    CounterStrongAgainstModel.team_kills, CounterStrongAgainstModel.team_assists,
+                    CounterStrongAgainstModel.total_first_tower, CounterStrongAgainstModel.sample_match,
+                    ChampionBasicModel.total_ban
+                )
+            ]
+
+            items.append(weak_champions[0])
+
+        for items in weak_counters:
+            strong_champion_id: int = items[0]['to_champion_id']
+            strong_champions: List[Dict] = [
+                dict(x) for x in
+                session.query(CounterWeakAgainstModel)
+                .join(ChampionModel, CounterWeakAgainstModel.champion_id == ChampionModel.champion_id)
+                .join(ChampionBasicModel, ChampionModel.champion_id == ChampionBasicModel.champion_id)
+                .filter(
+                    # ChampionModel.position == position,
+                    CounterWeakAgainstModel.champion_id == strong_champion_id,
+                    CounterWeakAgainstModel.to_champion_id == champion_id
+                )
+                .with_entities(
+                    ChampionModel.champion_id, ChampionModel.kor_name, ChampionModel.eng_name,
+                    CounterWeakAgainstModel.to_champion_id, CounterWeakAgainstModel.win, CounterWeakAgainstModel.lose,
+                    CounterWeakAgainstModel.line_kills, CounterWeakAgainstModel.line_deaths,
+                    CounterWeakAgainstModel.champion_kills, CounterWeakAgainstModel.champion_deaths,
+                    CounterWeakAgainstModel.champion_assists, CounterWeakAgainstModel.team_kills,
+                    CounterWeakAgainstModel.team_assists, CounterWeakAgainstModel.total_first_tower,
+                    CounterWeakAgainstModel.sample_match, ChampionBasicModel.total_ban
+                )
+            ]
+
+            items.append(strong_champions[0])
+
+        results: List[Dict] = to_response_counter(weak_counters + strong_counters)
+
+        return results
 
     # Admin API
     @staticmethod
