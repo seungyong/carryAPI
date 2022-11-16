@@ -8,10 +8,11 @@ from collections import defaultdict
 from app import session
 
 from ..controller.champion_skill import ChampionSkillController
-from ..models.champion import Champion as ChampionModel, to_response_counter, to_response_name, to_response_ranking
+from ..models.champion import Champion as ChampionModel
 from ..models.champion_basic import ChampionBasic as ChampionBasicModel
 from ..models.counter_weak_against import CounterWeakAgainst as CounterWeakAgainstModel
 from ..models.counter_strong_against import CounterStrongAgainst as CounterStrongAgainstModel
+from ..models.champion_master import ChampionMaster as ChampionMasterModel
 
 from ..util.single_ton import Singleton
 from ..util.version import get_version
@@ -55,7 +56,7 @@ class ChampionController(metaclass=Singleton):
 
                 # response 반환 값 맞추기
                 api_results[position].append(
-                    to_response_ranking(
+                    ChampionModel.to_response_ranking(
                         db_results[position][idx][0], db_results[position][idx][1], db_results[position][idx][2]
                     )
                 )
@@ -78,10 +79,10 @@ class ChampionController(metaclass=Singleton):
 
         for champion in champions_name:
             if champion['position'] in result:
-                result[champion['position']].append(to_response_name(champion))
+                result[champion['position']].append(ChampionModel.to_response_name(champion))
             else:
                 result[champion['position']] = list()
-                result[champion['position']].append(to_response_name(champion))
+                result[champion['position']].append(ChampionModel.to_response_name(champion))
 
         if result:
             return result
@@ -132,8 +133,6 @@ class ChampionController(metaclass=Singleton):
 
         if not strong_counters and not weak_counters:
             raise DataNotFound('Counter champion data not found.')
-
-        # if strong_counters
 
         # x => y에서 y => x 구하기
         for items in strong_counters:
@@ -187,7 +186,7 @@ class ChampionController(metaclass=Singleton):
 
             items.append(strong_champions[0])
 
-        results: List[Dict] = to_response_counter(weak_counters + strong_counters)
+        results: List[Dict] = ChampionModel.to_response_counter(weak_counters + strong_counters)
 
         return results
 
@@ -384,3 +383,8 @@ class ChampionController(metaclass=Singleton):
             raise DataNotFound('Not Found Champion Data.')
 
         return CREATED
+
+    @staticmethod
+    def insert_champion_master() -> int:
+        champion_masters: List[ChampionMasterModel] = []
+
