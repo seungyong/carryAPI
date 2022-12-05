@@ -460,8 +460,23 @@ class GameController(metaclass=Singleton):
                             'wardsPlaced': participant['wardsPlaced'],
                             'controlWardsPlaced': control_wards_placed,
                             'summoner1Id': participant['summoner1Id'],
-                            'summoner2Id': participant['summoner2Id']
+                            'summoner2Id': participant['summoner2Id'],
+                            'itemsBuild': {}
                         }
+                        print(participant['item0'])
+                        print(participant['item1'])
+                        print(participant['item2'])
+                        print(participant['item3'])
+                        print(participant['item4'])
+                        print(participant['item5'])
+                        print(participant['item6'])
+                        player_data['itemsBuild'][0] = ItemController.get_item_with_id(participant['item0'])
+                        player_data['itemsBuild'][1] = ItemController.get_item_with_id(participant['item1'])
+                        player_data['itemsBuild'][2] = ItemController.get_item_with_id(participant['item2'])
+                        player_data['itemsBuild'][3] = ItemController.get_item_with_id(participant['item3'])
+                        player_data['itemsBuild'][4] = ItemController.get_item_with_id(participant['item4'])
+                        player_data['itemsBuild'][5] = ItemController.get_item_with_id(participant['item5'])
+                        player_data['itemsBuild'][6] = ItemController.get_item_with_id(participant['item6'])
                         games['history']['players'][player_index] = player_data
                         player_index += 1
 
@@ -489,9 +504,8 @@ class GameController(metaclass=Singleton):
                     }
                     games['history']['teamInfos'][0] = teaminfos_data_blue
                     games['history']['teamInfos'][1] = teaminfos_data_red
-                    item1 = ItemController.get_item_with_id(games['history']['players'][1]['item3Id'])
-                    print(item1)
-                    itemsBuild_data = {}
+
+
 
 
                     print(games)
@@ -509,3 +523,8 @@ class GameController(metaclass=Singleton):
             status_code = 500
 
         return '', status_code
+
+#aldlqjdjqowiryrqhwoeqiwjediqiwiejfjllsdnfqpwodqfnpqiofnqpwadoqndnqfoqwidqnwdoqwllqkwdnqowdinnfnqosinfoqfnqpoqoodnqdnqn
+#adlalskdkdkqkwdmfbnqowidiqjdlannincludeoqdoodjqjdiwidnfooddooieidndqjsldnowinclude stdio.h void main(){printf("hello
+#world ");dddjwowueiqcnqcoqociwncoqwicnqcnndkqbfii89928euifkfkexepiton as e dldjjjdiwehfhqoeuuedbfbqofiifqbfbdjqoqiwidnqdb
+#dhffbfoooo01028837u1vbvveveiqwesymmner?=api_keu?_seritorindfn
