@@ -1,6 +1,8 @@
-from flask import Blueprint
+from flask import Blueprint, request as flask_request
 from flask_restx import Namespace, Resource, fields
+
 from app import session
+from typing import Dict, List
 
 from ..controller.champion import ChampionController
 
@@ -26,23 +28,26 @@ response_forbidden_model = champion_ns.model("Can't access URL or not found URL"
 response_internal_server_error_model = champion_ns.model('Server Error', InternalServerError.response_model())
 
 
-@champion_ns.route('/')
+@champion_ns.route('/ranking')
+@champion_ns.doc(
+    params={
+        'count': {'description': 'Get Ranking champion count', 'default': 5, 'type': 'int'}
+    }
+)
+@champion_ns.response(200, 'Success')
+@champion_ns.response(404, 'No Found Data', response_no_data_model)
 @champion_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
-class AllChampion(Resource):
+class ChampionRanking(Resource):
     @staticmethod
-    @champion_ns.response(201, 'Created')
-    @champion_ns.response(403, 'Forbidden', response_forbidden_model)
-    def post():
-        """Insert Champions data that doesn't exist. (Admin API)"""
+    def get():
         try:
-            champion_controller = ChampionController()
-            code = champion_controller.insert_champion()
+            count = flask_request.args.get(key='count', default=5, type=int)
 
-            if code == constants.CREATED:
-                return '', constants.CREATED
+            champion_controller = ChampionController()
+            result = champion_controller.get_ranking(count)
+
+            return result, constants.OK
         except DataNotFound as e:
-            return e.__dict__, e.code
-        except Forbidden as e:
             return e.__dict__, e.code
         except Exception:
             session.rollback()
@@ -66,6 +71,113 @@ class ChampionName(Resource):
         except DataNotFound as e:
             return e.__dict__, e.code
         except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/champions/counter/<string:position>/<int:champion_id>')
+class ChampionCounter(Resource):
+    @staticmethod
+    def get(position: str, champion_id: int):
+        try:
+            champion_controller: ChampionController = ChampionController()
+            result: List[Dict] = champion_controller.get_champion_counter(
+                position.upper(), champion_id
+            )
+
+            return result, constants.OK
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+# ADMIN API
+@champion_ns.route('/')
+@champion_ns.response(500, 'Internal Server Error', response_internal_server_error_model)
+class AllChampion(Resource):
+    @staticmethod
+    @champion_ns.response(201, 'Created')
+    @champion_ns.response(403, 'Forbidden', response_forbidden_model)
+    def post():
+        """(Admin API) Insert Champions data that doesn't exist."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.insert_champion()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Forbidden as e:
+            return e.__dict__, e.code
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/analysis/basic')
+class ChampionAnalysisBasic(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the basic of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_basic_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/analysis/counter/weak')
+class ChampionAnalysisCounterWeak(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the counter weak against of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_counter_weak_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception:
+            session.rollback()
+            e = InternalServerError('Unknown Error')
+            return e.__dict__, e.code
+
+
+@champion_ns.route('/analysis/counter/strong')
+class ChampionAnalysisCounterStrong(Resource):
+    @staticmethod
+    def post():
+        """(Admin API) Analyze the counter strong against of the champion."""
+        try:
+            champion_controller = ChampionController()
+            code = champion_controller.champion_counter_strong_analysis()
+
+            if code == constants.CREATED:
+                return '', constants.CREATED
+            else:
+                raise Exception('Wrong code')
+        except DataNotFound as e:
+            return e.__dict__, e.code
+        except Exception as e:
             session.rollback()
             e = InternalServerError('Unknown Error')
             return e.__dict__, e.code

@@ -16,9 +16,8 @@ class ChampionSpellBuild(db.Model):
     total_lose = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, spell_build_id, champion_id, spell0_id, spell1_id, total_win, total_lose
+            self, champion_id, spell0_id, spell1_id, total_win, total_lose
     ):
-        self.spell_build_id = spell_build_id
         self.champion_id = champion_id
         self.spell0_id = spell0_id
         self.spell1_id = spell1_id

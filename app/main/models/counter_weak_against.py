@@ -1,16 +1,17 @@
 from app import db
 
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.dialects.mysql import SMALLINT, INTEGER, VARCHAR
+from sqlalchemy.dialects.mysql import SMALLINT, INTEGER, VARCHAR, DECIMAL
 
 
-class ChampionEasier(db.Model):
-    __table_name__ = 'champion_easier'
+class CounterWeakAgainst(db.Model):
+    __table_name__ = 'counter_weak_against'
     __table_args__ = {'mysql_collate': 'utf8_general_ci'}
 
-    easier_id = Column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
+    counter_id = Column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
     champion_id = Column(SMALLINT, ForeignKey('champion.champion_id'), nullable=False)
-    to_champion_id = Column(SMALLINT, unique=True, nullable=False)
+    to_champion_id = Column(SMALLINT, nullable=False)
+    score = Column(DECIMAL(3, 1), nullable=False)
     win = Column(INTEGER, nullable=False)
     lose = Column(INTEGER, nullable=False)
     line_kills = Column(INTEGER, nullable=False)
@@ -19,17 +20,17 @@ class ChampionEasier(db.Model):
     champion_deaths = Column(INTEGER, nullable=False)
     champion_assists = Column(INTEGER, nullable=False)
     total_first_tower = Column(VARCHAR(10), nullable=False)
-    team_kills = Column(SMALLINT, nullable=False)
-    team_assists = Column(SMALLINT, nullable=False)
+    team_kills = Column(INTEGER, nullable=False)
+    team_assists = Column(INTEGER, nullable=False)
     sample_match = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, easier_id, champion_id, to_champion_id, win, lose, line_kills, line_deaths, champion_kills,
+            self, champion_id, to_champion_id, score, win, lose, line_kills, line_deaths, champion_kills,
             champion_deaths, champion_assists, total_first_tower, team_kills, team_assists, sample_match
     ):
-        self.easier_id = easier_id
         self.champion_id = champion_id
         self.to_champion_id = to_champion_id
+        self.score = score
         self.win = win
         self.lose = lose
         self.line_kills = line_kills
@@ -45,9 +46,9 @@ class ChampionEasier(db.Model):
     @property
     def serialize(self):
         return {
-            'easier_id': self.easier_id,
             'champion_id': self.champion_id,
             'to_champion_id': self.to_champion_id,
+            'score': float(self.score),
             'win': self.win,
             'lose': self.lose,
             'line_kills': self.line_kills,

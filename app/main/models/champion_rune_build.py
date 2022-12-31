@@ -17,9 +17,8 @@ class ChampionRuneBuild(db.Model):
     total_lose = Column(INTEGER, nullable=False)
 
     def __init__(
-            self, rune_build_id, champion_id, primary_rune_build, sub_rune_build, stat, total_win, total_lose
+            self, champion_id, primary_rune_build, sub_rune_build, stat, total_win, total_lose
     ):
-        self.rune_build_id = rune_build_id
         self.champion_id = champion_id
         self.primary_rune_build = primary_rune_build
         self.sub_rune_build = sub_rune_build

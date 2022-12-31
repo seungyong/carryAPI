@@ -16,9 +16,8 @@ class TierVariation(db.Model):
     played_time = Column(TIMESTAMP, nullable=False)
 
     def __init__(
-            self, tier_variation_id, summoner_id, solo_tier, solo_rank, solo_point, played_time
+            self, summoner_id, solo_tier, solo_rank, solo_point, played_time
     ):
-        self.tier_variation_id = tier_variation_id
         self.summoner_id = summoner_id
         self.solo_tier = solo_tier
         self.solo_rank = solo_rank
