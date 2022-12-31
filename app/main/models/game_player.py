@@ -34,7 +34,7 @@ class GamePlayer(db.Model):
     assists = Column(TINYINT(unsigned=True), default=0)
     max_kill_type = Column(VARCHAR(15), default='')
     total_damage_to_champions = Column(MEDIUMINT, default=0)
-    cs = Column(SMALLINT(unsigned=True), default=0)
+    cs = Column(MEDIUMINT(unsigned=True), default=0)
     gold_earned = Column(MEDIUMINT, default=0)
     vision_score = Column(TINYINT, default=0)
     wards_placed = Column(TINYINT(unsigned=True), default=0)
